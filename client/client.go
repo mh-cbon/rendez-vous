@@ -17,7 +17,7 @@ func FromAddr(address string) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := net.DialUDP(protocol, nil, udpAddr)
+	conn, err := net.ListenUDP(protocol, udpAddr)
 	if err != nil {
 		return nil, err
 	}
@@ -32,13 +32,13 @@ type Client struct {
 	conn *net.UDPConn
 }
 
-func (c *Client) query(q model.Message) (model.Message, error) {
+func (c *Client) query(remote *net.UDPAddr, q model.Message) (model.Message, error) {
 	var ret model.Message
 	data, err := json.Marshal(q)
 	if err != nil {
 		return ret, errors.WithMessage(err, "query marshal")
 	}
-	if _, err2 := c.conn.Write(data); err2 != nil {
+	if _, err2 := c.conn.WriteToUDP(data, remote); err2 != nil {
 		return ret, errors.WithMessage(err, "query write")
 	}
 	res := make([]byte, 1000)
@@ -59,26 +59,26 @@ func (c *Client) Conn() *net.UDPConn {
 }
 
 // Ping remote
-func (c *Client) Ping() (model.Message, error) {
+func (c *Client) Ping(remote *net.UDPAddr) (model.Message, error) {
 	m := model.Message{
 		Type:  "q",
 		Query: model.Ping,
 	}
-	return c.query(m)
+	return c.query(remote, m)
 }
 
 // Find peer for given pbk
-func (c *Client) Find(pbk []byte) (model.Message, error) {
+func (c *Client) Find(remote *net.UDPAddr, pbk []byte) (model.Message, error) {
 	m := model.Message{
 		Type:  "q",
 		Query: model.Find,
 		Pbk:   pbk,
 	}
-	return c.query(m)
+	return c.query(remote, m)
 }
 
 // Register yourself
-func (c *Client) Register(pbk []byte, sign []byte, value string) (model.Message, error) {
+func (c *Client) Register(remote *net.UDPAddr, pbk []byte, sign []byte, value string) (model.Message, error) {
 	m := model.Message{
 		Type:  "q",
 		Query: model.Register,
@@ -86,15 +86,15 @@ func (c *Client) Register(pbk []byte, sign []byte, value string) (model.Message,
 		Sign:  sign,
 		Value: value,
 	}
-	return c.query(m)
+	return c.query(remote, m)
 }
 
 // Unregister yourself
-func (c *Client) Unregister(pbk []byte) (model.Message, error) {
+func (c *Client) Unregister(remote *net.UDPAddr, pbk []byte) (model.Message, error) {
 	m := model.Message{
 		Type:  "q",
 		Query: model.Unregister,
 		Pbk:   pbk,
 	}
-	return c.query(m)
+	return c.query(remote, m)
 }

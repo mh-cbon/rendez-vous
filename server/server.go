@@ -78,7 +78,7 @@ func Handler(storage *store.TSStore) socket.Handler {
 				return sendError(remote, notFound)
 			}
 
-			return sendResponse(remote, model.Message{Response: peer.Address})
+			return sendOk(remote, peer.Address)
 
 		default:
 			return sendError(remote, wrongQuery)
@@ -86,7 +86,7 @@ func Handler(storage *store.TSStore) socket.Handler {
 	}
 }
 
-func sendResponse(remote socket.Socket, m model.Message) error {
+func reply(remote socket.Socket, m model.Message) error {
 	m.Address = remote.Addr()
 	m.Type = "r"
 	b, err := json.Marshal(m)
@@ -97,5 +97,9 @@ func sendResponse(remote socket.Socket, m model.Message) error {
 }
 
 func sendError(remote socket.Socket, code int) error {
-	return sendResponse(remote, model.Message{Type: "r", Code: code})
+	return reply(remote, model.Message{Type: "r", Code: code})
+}
+
+func sendOk(remote socket.Socket, v string) error {
+	return reply(remote, model.Message{Type: "r", Code: okCode, Response: v})
 }

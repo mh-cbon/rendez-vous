@@ -1,3 +1,4 @@
+// UDP meeting point server
 package main
 
 import (
@@ -7,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 
 	"github.com/mh-cbon/dht/ed25519"
 	"github.com/mh-cbon/rendez-vous/client"
@@ -79,7 +81,16 @@ func runClient(opts cliOpts) {
 		log.Fatalf("-remote argument is required")
 	}
 
-	c, err := client.FromAddr(opts.remote)
+	if opts.port == "" {
+		log.Fatalf("-remote argument is required")
+	}
+
+	remote, err := net.ResolveUDPAddr("udp", opts.remote)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	c, err := client.FromAddr(":" + opts.port)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -93,14 +104,14 @@ func runClient(opts cliOpts) {
 			if err2 != nil {
 				log.Fatal(err2)
 			}
-			res, err = c.Find(b)
+			res, err = c.Find(remote, b)
 
 		} else if opts.query == "unregister" {
 			b, err2 := hex.DecodeString(opts.pbk)
 			if err2 != nil {
 				log.Fatal(err2)
 			}
-			res, err = c.Unregister(b)
+			res, err = c.Unregister(remote, b)
 
 		} else if opts.query == "register" {
 			var pbk []byte
@@ -131,12 +142,12 @@ func runClient(opts cliOpts) {
 				pbk = ppbk
 				sign = psign
 			}
-			res, err = c.Register(pbk, sign, opts.value)
+			res, err = c.Register(remote, pbk, sign, opts.value)
 
 			persist = err == nil
 
 		} else if opts.query == "ping" {
-			res, err = c.Ping()
+			res, err = c.Ping(remote)
 			if err != nil {
 				err = errors.WithMessage(err, "query ping")
 			}
@@ -150,13 +161,12 @@ func runClient(opts cliOpts) {
 
 		// only for demo
 		if persist {
-			var b []byte
+			var b [0x10000]byte
 			for {
 				n, _ := c.Conn().Read(b[:])
 				if len(b) > 0 {
 					fmt.Println(string(b[:n]))
 				}
-				log.Println("r")
 			}
 		}
 	}
