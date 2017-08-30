@@ -50,8 +50,8 @@ func (s Socket) Addr() string {
 }
 
 //Close the socket
-func (s Socket) Close() error {
-	return s.conn.Close()
+func (u *UDP) Close() error {
+	return u.conn.Close()
 }
 
 // Listen invoke process when a new message income
