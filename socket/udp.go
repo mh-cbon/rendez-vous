@@ -20,6 +20,7 @@ func FromAddr(address string) (*UDP, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Println("listening on ", udpAddr.String())
 	conn, err := net.ListenUDP(protocol, udpAddr)
 	if err != nil {
 		return nil, err
@@ -60,7 +61,7 @@ func (u *UDP) Listen(h Handler) error {
 	conn := u.conn
 	var b [0x10000]byte
 	for {
-		n, addr, readErr := conn.ReadFrom(b[:])
+		n, addr, readErr := conn.ReadFromUDP(b[:])
 		if readErr == nil && n == len(b) {
 			readErr = fmt.Errorf("received packet exceeds buffer size %q", len(b))
 		}
@@ -80,7 +81,7 @@ func (u *UDP) Listen(h Handler) error {
 				if err := h(data, s); err != nil {
 					log.Println("handling error:", err)
 				}
-			}(addr.(*net.UDPAddr), x)
+			}(addr, x)
 		}
 	}
 }

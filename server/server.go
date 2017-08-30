@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log"
 
 	"github.com/mh-cbon/dht/ed25519"
 	"github.com/mh-cbon/rendez-vous/model"
@@ -31,6 +32,8 @@ func Handler(storage *store.TSStore) socket.Handler {
 		if err != nil {
 			return err
 		}
+
+		log.Println(remote.Addr(), "<-", v)
 
 		switch v.Query {
 
@@ -93,6 +96,7 @@ func reply(remote socket.Socket, m model.Message) error {
 	if err != nil {
 		return err
 	}
+	log.Println(remote.Addr(), "->", m)
 	return remote.Write(b)
 }
 
