@@ -163,9 +163,11 @@ func runClient(opts cliOpts) {
 		if persist {
 			var b [0x10000]byte
 			for {
-				n, _ := c.Conn().Read(b[:])
+				n, remote, _ := c.Conn().ReadFromUDP(b[:])
 				if len(b) > 0 {
 					fmt.Println(string(b[:n]))
+					// echo
+					c.Conn().WriteTo(b[:n], remote)
 				}
 			}
 		}
