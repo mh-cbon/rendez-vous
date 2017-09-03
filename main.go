@@ -307,19 +307,25 @@ func runWebsite(opts websiteOpts) {
 
 	pc := ln.(*utp.Socket)
 	c := client.FromSocket(socket.FromConn(pc))
-	res, err := c.Register(opts.remote, opts.pbk, opts.pbk, opts.value)
-	if err != nil {
-		log.Fatal(err)
-	}
+	go func() {
+		<-time.After(time.Second)
+		res, err := c.Register(opts.remote, opts.pbk, opts.pbk, opts.value)
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	log.Println("registration ", res)
+		log.Println("registration ", res)
 
-	srv := &http.Server{
-		Handler: http.FileServer(http.Dir(opts.dir)),
-	}
-	err = srv.Serve(ln)
-	if err != nil {
-		log.Fatal(err)
+		srv := &http.Server{
+			Handler: http.FileServer(http.Dir(opts.dir)),
+		}
+		err = srv.Serve(ln)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	if err2 := c.Listen(); err2 != nil {
+		log.Fatal(err2)
 	}
 }
 

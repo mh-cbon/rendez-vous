@@ -24,6 +24,13 @@ type Client struct {
 	s socket.Socket
 }
 
+//Listen ...
+func (c *Client) Listen() error {
+	return c.s.Listen(func(remote net.Addr, data []byte, writer socket.ResponseWriter) error {
+		return nil
+	})
+}
+
 func (c *Client) query(remote string, q model.Message) (model.Message, error) {
 	var ret model.Message
 	addr, err := net.ResolveUDPAddr("udp", remote)

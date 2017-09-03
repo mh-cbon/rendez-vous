@@ -53,13 +53,13 @@ type pendingQuery struct {
 
 func (t *Tx) loop() {
 	for ; ; <-time.After(time.Millisecond * 100) {
-		switch {
+		select {
 		case <-t.closed:
 			return
 		default:
 			t.l.Lock()
 			for index, p := range t.transactions {
-				if p.create.After(time.Now()) {
+				if p.create.Add(time.Second * 5).Before(time.Now()) {
 					t.transactions[index].h(nil, true)
 					delete(t.transactions, index)
 				}
