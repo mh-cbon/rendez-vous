@@ -307,7 +307,7 @@ func runWebsite(opts websiteOpts) {
 
 	pc := ln.(*utp.Socket)
 	c := client.FromSocket(socket.FromConn(pc))
-	res, err = c.Register(opts.remote, opts.pbk, opts.pbk, opts.value)
+	res, err := c.Register(opts.remote, opts.pbk, opts.pbk, opts.value)
 	if err != nil {
 		log.Fatal(err)
 	}
