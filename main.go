@@ -8,20 +8,32 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"regexp"
+	"strings"
+	"time"
 
+	"github.com/anacrolix/utp"
+	"github.com/elazarl/goproxy"
+	"github.com/gorilla/mux"
 	"github.com/mh-cbon/dht/ed25519"
 	"github.com/mh-cbon/rendez-vous/client"
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/server"
 	"github.com/mh-cbon/rendez-vous/socket"
-	"github.com/mh-cbon/rendez-vous/store"
+	"github.com/mh-cbon/rendez-vous/utils"
+	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 )
 
+type srvOpts struct {
+	listen string
+}
+
 type cliOpts struct {
-	op     string
-	port   string
+	listen string
 	remote string
 	query  string
 	pbk    string
@@ -30,127 +42,240 @@ type cliOpts struct {
 	auto   bool
 }
 
+type websiteOpts struct {
+	listen string
+	remote string
+	dir    string
+	pbk    string
+	value  string
+	sign   string
+	auto   bool
+}
+
+type browserOpts struct {
+	listen string
+	remote string
+	proxy  string
+	ws     string
+}
+
 //todo: add storage clean up with ttl on entry
+
+var format = logging.MustStringFormatter(
+	`%{color}%{time:15:04:05} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset}: %{message}`,
+)
+
+func showErr(flags *flag.FlagSet, reason string) {
+	showHelp(flags)
+	fmt.Println()
+	fmt.Println("Wrong command line: ", reason)
+}
+func showHelp(flags *flag.FlagSet) {
+	showVersion()
+	fmt.Println("")
+	fmt.Println("	A server to expose your endpoints with a public key.")
+	fmt.Println("	A client to find/register endpoints for a public key.")
+	fmt.Println("")
+	fmt.Println("Usage")
+	fmt.Println("	rendez-vous [server|client] <options>")
+	if flags != nil {
+		fmt.Println("")
+		flags.Usage()
+	}
+}
+func showVersion() {
+	fmt.Println("rendez-vous - noversion")
+}
 
 func main() {
 
-	var opts cliOpts
+	sHelp := flag.Bool("h", false, "show help")
+	lHelp := flag.Bool("help", false, "show help")
 
-	flag.StringVar(&opts.op, "op", "", "operation to do server|client")
-	flag.StringVar(&opts.port, "port", "8080", "Port to listen")
-	flag.StringVar(&opts.remote, "remote", "", "Address of the rendez-vous")
-	flag.StringVar(&opts.query, "query", "", "Query to send")
-	flag.BoolVar(&opts.auto, "auto", false, "Generate pvk/pbk/sign automatically")
-	flag.StringVar(&opts.pbk, "pbk", "", "Pbk of the query in hexadecimal")
-	flag.StringVar(&opts.value, "value", "", "Value of the query")
-	flag.StringVar(&opts.sign, "sign", "", "Sign of the query in hexadecimal")
+	sVersion := flag.Bool("v", false, "show version")
+	lVersion := flag.Bool("version", false, "show version")
 
 	flag.Parse()
 
-	switch opts.op {
-	case "server":
+	if *sHelp || *lHelp {
+		return
+	} else if *sVersion || *lVersion {
+		showVersion()
+		return
+	} else if len(os.Args) < 2 {
+		showErr(flag.CommandLine, "Missing operation (server|client)")
+		return
+	}
+
+	op := os.Args[1]
+	args := os.Args[2:]
+
+	if op == "serve" {
+		var opts srvOpts
+		set := flag.NewFlagSet(op, flag.ExitOnError)
+		set.StringVar(&opts.listen, "listen", "0", "Port to listen")
+		sHelp = set.Bool("h", false, "show help")
+		lHelp = set.Bool("help", false, "show help")
+		set.Parse(args)
+		if *sHelp || *lHelp {
+			showHelp(set)
+			return
+		}
+		if opts.listen == "" {
+			showErr(set, "-listen argument is required")
+			return
+		}
+
 		runServer(opts)
-	case "client":
+
+	} else if op == "client" {
+
+		var opts cliOpts
+		set := flag.NewFlagSet(op, flag.ExitOnError)
+		set.StringVar(&opts.listen, "listen", "0", "Port to listen")
+		set.StringVar(&opts.remote, "remote", "", "Address of the rendez-vous")
+		set.StringVar(&opts.query, "query", "", "Query to send (ping|find|register|unregister)")
+		set.BoolVar(&opts.auto, "auto", false, "Generate pvk/pbk/sign automatically")
+		set.StringVar(&opts.pbk, "pbk", "", "Pbk of the query in hexadecimal")
+		set.StringVar(&opts.value, "value", "", "Value of the query")
+		set.StringVar(&opts.sign, "sign", "", "Sign of the query in hexadecimal")
+		sHelp = set.Bool("-h", false, "show help")
+		lHelp = set.Bool("-help", false, "show help")
+		set.Parse(args)
+		if *sHelp || *lHelp {
+			showHelp(set)
+			return
+		}
+		if opts.listen == "" {
+			showErr(set, "-listen argument is required")
+			return
+		}
+		if opts.remote == "" {
+			showErr(set, "-remote argument is required")
+			return
+		}
+		if model.OkVerb(opts.query) == false {
+			showErr(set, "-query argument is invalid")
+			return
+		}
 		runClient(opts)
-	default:
-		log.Fatal("Wrong command line, must be: rendez-vous [server|client] ...options")
+
+	} else if op == "website" {
+		var opts websiteOpts
+		set := flag.NewFlagSet(op, flag.ExitOnError)
+		set.StringVar(&opts.listen, "listen", "0", "Port to listen")
+		set.StringVar(&opts.dir, "static", "./static", "Directory to serve")
+		set.StringVar(&opts.remote, "remote", "", "Address of the rendez-vous")
+		set.BoolVar(&opts.auto, "auto", false, "Generate pvk/pbk/sign automatically")
+		set.StringVar(&opts.pbk, "pbk", "", "Pbk of the query in hexadecimal")
+		set.StringVar(&opts.value, "value", "", "Value of the query")
+		set.StringVar(&opts.sign, "sign", "", "Sign of the query in hexadecimal")
+		sHelp = set.Bool("h", false, "show help")
+		lHelp = set.Bool("help", false, "show help")
+		set.Parse(args)
+		if *sHelp || *lHelp {
+			showHelp(set)
+			return
+		}
+		if opts.listen == "" {
+			showErr(set, "-listen argument is required")
+			return
+		}
+		if opts.dir == "" {
+			showErr(set, "-static argument is required")
+			return
+		}
+
+		runWebsite(opts)
+
+	} else if op == "browser" {
+		var opts browserOpts
+		set := flag.NewFlagSet(op, flag.ExitOnError)
+		set.StringVar(&opts.listen, "listen", "0", "Port to listen")
+		set.StringVar(&opts.remote, "remote", "", "Address of the rendez-vous")
+		set.StringVar(&opts.proxy, "proxy", "", "Address of the proxy")
+		set.StringVar(&opts.ws, "ws", "", "Address of the local website")
+		sHelp = set.Bool("h", false, "show help")
+		lHelp = set.Bool("help", false, "show help")
+		set.Parse(args)
+		if *sHelp || *lHelp {
+			showHelp(set)
+			return
+		}
+		if opts.listen == "" {
+			showErr(set, "-listen argument is required")
+			return
+		}
+		if opts.remote == "" {
+			showErr(set, "-remote argument is required")
+			return
+		}
+		if opts.proxy == "" {
+			showErr(set, "-proxy argument is required")
+			return
+		}
+		if opts.ws == "" {
+			showErr(set, "-ws argument is required")
+			return
+		}
+
+		runBrowser(opts)
+
+	} else {
+		log.Fatal("Wrong command line, must be: rendez-vous [server|client|website|browser] <options>")
 	}
 }
 
-func runServer(opts cliOpts) {
+func runServer(opts srvOpts) {
 
-	if opts.port == "" {
-		log.Fatalf("-port argument is required")
-	}
-
-	storage := store.New(nil)
-
-	s, err := socket.FromAddr(":" + opts.port)
+	conn, err := utils.UDP(":" + opts.listen)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if err := s.Listen(server.Handler(storage)); err != io.EOF {
+	srv := server.FromSocket(socket.FromConn(conn))
+	if err := srv.Listen(); err != io.EOF {
 		log.Fatal(err)
 	}
 }
 
 func runClient(opts cliOpts) {
 
-	if opts.remote == "" {
-		log.Fatalf("-remote argument is required")
-	}
-
-	if opts.port == "" {
-		log.Fatalf("-remote argument is required")
-	}
-
-	remote, err := net.ResolveUDPAddr("udp", opts.remote)
+	conn, err := utils.UDP(":" + opts.listen)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	c, err := client.FromAddr(":" + opts.port)
-	if err != nil {
-		log.Fatal(err)
-	}
+	c := client.FromSocket(socket.FromConn(conn))
 
-	persist := false
 	{
 		var res model.Message
 		var err error
 		if opts.query == "find" {
-			b, err2 := hex.DecodeString(opts.pbk)
-			if err2 != nil {
-				log.Fatal(err2)
-			}
-			res, err = c.Find(remote, b)
+			res, err = c.Find(opts.remote, opts.pbk)
 
 		} else if opts.query == "unregister" {
-			b, err2 := hex.DecodeString(opts.pbk)
-			if err2 != nil {
-				log.Fatal(err2)
-			}
-			res, err = c.Unregister(remote, b)
+			res, err = c.Unregister(opts.remote, opts.pbk)
 
 		} else if opts.query == "register" {
-			var pbk []byte
-			var sign []byte
 			if opts.auto {
 				pvk, _, err2 := ed25519.GenerateKey(rand.Reader)
 				if err2 != nil {
 					log.Fatal(err2)
 				}
-
-				pbk = ed25519.PublicKeyFromPvk(pvk)
-				sign = ed25519.Sign(pvk, pbk, []byte(opts.value))
-
-				fmt.Printf("pvk %x\n", pvk)
-				fmt.Printf("pbk %x\n", pbk)
-				fmt.Printf("sign %x\n", sign)
-				fmt.Printf("sign %v\n", len(sign))
-
-			} else {
-				ppbk, err2 := hex.DecodeString(opts.pbk)
-				if err2 != nil {
-					log.Fatal(err2)
-				}
-				psign, err2 := hex.DecodeString(opts.sign)
-				if err2 != nil {
-					log.Fatal(err2)
-				}
-				pbk = ppbk
-				sign = psign
+				pbk := ed25519.PublicKeyFromPvk(pvk)
+				sign := ed25519.Sign(pvk, pbk, []byte(opts.value))
+				opts.pbk = hex.EncodeToString(pbk)
+				opts.sign = hex.EncodeToString(sign)
 			}
-			res, err = c.Register(remote, pbk, sign, opts.value)
-
-			persist = err == nil
+			res, err = c.Register(opts.remote, opts.pbk, opts.sign, opts.value)
 
 		} else if opts.query == "ping" {
-			res, err = c.Ping(remote)
+			res, err = c.Ping(opts.remote)
 			if err != nil {
 				err = errors.WithMessage(err, "query ping")
 			}
+
 		} else {
 			err = fmt.Errorf("Unknwon query %q", opts.query)
 		}
@@ -158,18 +283,99 @@ func runClient(opts cliOpts) {
 			log.Fatal(err)
 		}
 		fmt.Printf("%#v\n", res)
-
-		// only for demo
-		if persist {
-			var b [0x10000]byte
-			for {
-				n, remote, _ := c.Conn().ReadFromUDP(b[:])
-				if len(b) > 0 {
-					fmt.Println(string(b[:n]))
-					// echo
-					c.Conn().WriteTo(b[:n], remote)
-				}
-			}
-		}
 	}
+}
+
+func runWebsite(opts websiteOpts) {
+
+	if opts.auto {
+		pvk, _, err2 := ed25519.GenerateKey(rand.Reader)
+		if err2 != nil {
+			log.Fatal(err2)
+		}
+		pbk := ed25519.PublicKeyFromPvk(pvk)
+		sign := ed25519.Sign(pvk, pbk, []byte(opts.value))
+		opts.pbk = hex.EncodeToString(pbk)
+		opts.sign = hex.EncodeToString(sign)
+	}
+
+	ln, err := utp.Listen(":" + opts.listen)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pc := ln.(*utp.Socket)
+	c := client.FromSocket(socket.FromConn(pc))
+	_, err = c.Register(opts.remote, opts.pbk, opts.pbk, opts.value)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	srv := &http.Server{
+		Handler: http.FileServer(http.Dir(opts.dir)),
+	}
+	err = srv.Serve(ln)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func runBrowser(opts browserOpts) {
+
+	ln, err := utp.Listen(":" + opts.listen)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pc := ln.(*utp.Socket)
+	c := client.FromSocket(socket.FromConn(pc))
+
+	r := mux.NewRouter()
+	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./browser/static/")))
+	srv := &http.Server{
+		Handler:      r,
+		Addr:         "127.0.0.1:" + opts.ws,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
+	log.Println("Listening...", "127.0.0.1:"+opts.ws)
+
+	go func() {
+		if err2 := srv.ListenAndServe(); err2 != nil {
+			log.Fatal(err2)
+		}
+	}()
+
+	go func() {
+		proxy := goproxy.NewProxyHttpServer()
+		proxy.Verbose = true
+		proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^.+[.]me[.]com$"))).DoFunc(
+			func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+				pbk := strings.Split(r.URL.Host, ".")[0]
+				res, err := c.Find(opts.remote, pbk)
+				if err != nil {
+					return r, goproxy.NewResponse(r,
+						goproxy.ContentTypeText, http.StatusForbidden,
+						"failed: "+err.Error())
+				}
+				log.Println(res)
+				return r, nil
+			})
+		proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^me[.]com$"))).DoFunc(
+			func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
+				r.URL.Host = "127.0.0.1:" + opts.ws
+				return r, nil
+			})
+		log.Fatal(http.ListenAndServe("127.0.0.1:"+opts.proxy, proxy))
+	}()
+
+	go func() {
+		cmd := exec.Command("chromium-browser", "--proxy-server=127.0.0.1:"+opts.proxy, "me.com")
+		if err := cmd.Start(); err != nil {
+			log.Fatal(err)
+		}
+		cmd.Process.Release()
+	}()
+
+	<-make(chan bool)
 }

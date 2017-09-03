@@ -2,12 +2,12 @@ package store
 
 import (
 	"bytes"
-	"log"
 	"sync"
+	"time"
 )
 
-// Store of peers
-type Store struct {
+// Registrations of peers
+type Registrations struct {
 	Peers []Peer
 }
 
@@ -15,17 +15,18 @@ type Store struct {
 type Peer struct {
 	Address string
 	Pbk     []byte
+	create  time.Time
 }
 
 // Add a peer (remote+pbk)
-func (s *Store) Add(address string, pbk []byte) {
-	p := Peer{Address: address, Pbk: make([]byte, len(pbk))}
+func (s *Registrations) Add(address string, pbk []byte) {
+	p := Peer{address, make([]byte, len(pbk)), time.Now()}
 	copy(p.Pbk, pbk)
 	s.Peers = append(s.Peers, p)
 }
 
 // GetByAddr find a peer by its addresss
-func (s *Store) GetByAddr(address string) *Peer {
+func (s *Registrations) GetByAddr(address string) *Peer {
 	for _, p := range s.Peers {
 		if p.Address == address {
 			return &p
@@ -35,9 +36,8 @@ func (s *Store) GetByAddr(address string) *Peer {
 }
 
 // GetByPbk find a peer by its Pbk
-func (s *Store) GetByPbk(pbk []byte) *Peer {
+func (s *Registrations) GetByPbk(pbk []byte) *Peer {
 	for _, p := range s.Peers {
-		log.Printf("%x <> %x\n", p.Pbk, pbk)
 		if bytes.Equal(p.Pbk, pbk) {
 			return &p
 		}
@@ -46,7 +46,7 @@ func (s *Store) GetByPbk(pbk []byte) *Peer {
 }
 
 // RemoveByAddr removes all peer with given address
-func (s *Store) RemoveByAddr(address string) bool {
+func (s *Registrations) RemoveByAddr(address string) bool {
 	ok := false
 	for i, p := range s.Peers {
 		if p.Address == address {
@@ -58,7 +58,7 @@ func (s *Store) RemoveByAddr(address string) bool {
 }
 
 // RemoveByPbk removes all peer with given pbk
-func (s *Store) RemoveByPbk(pbk []byte) bool {
+func (s *Registrations) RemoveByPbk(pbk []byte) bool {
 	ok := false
 	for i, p := range s.Peers {
 		if bytes.Equal(p.Pbk, pbk) {
@@ -70,7 +70,7 @@ func (s *Store) RemoveByPbk(pbk []byte) bool {
 }
 
 // HasAddr return true if a peer has given address
-func (s *Store) HasAddr(address string) bool {
+func (s *Registrations) HasAddr(address string) bool {
 	for _, p := range s.Peers {
 		if p.Address == address {
 			return true
@@ -80,7 +80,7 @@ func (s *Store) HasAddr(address string) bool {
 }
 
 // HasPbk return true if a peer has given pbk
-func (s *Store) HasPbk(pbk []byte) bool {
+func (s *Registrations) HasPbk(pbk []byte) bool {
 	for _, p := range s.Peers {
 		if bytes.Equal(p.Pbk, pbk) {
 			return true
@@ -89,64 +89,64 @@ func (s *Store) HasPbk(pbk []byte) bool {
 	return false
 }
 
-// TSStore is a TS Store
-type TSStore struct {
-	store *Store
+// TSRegistrations is a TS Registrations
+type TSRegistrations struct {
+	store *Registrations
 	m     *sync.Mutex
 }
 
 // New thread safe store
-func New(s *Store) *TSStore {
+func New(s *Registrations) *TSRegistrations {
 	if s == nil {
-		s = &Store{}
+		s = &Registrations{}
 	}
-	return &TSStore{store: s, m: &sync.Mutex{}}
+	return &TSRegistrations{store: s, m: &sync.Mutex{}}
 }
 
 // Add a peer (remote+pbk)
-func (s *TSStore) Add(address string, pbk []byte) {
+func (s *TSRegistrations) Add(address string, pbk []byte) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.store.Add(address, pbk)
 }
 
 // GetByAddr find a peer by its addresss
-func (s *TSStore) GetByAddr(address string) *Peer {
+func (s *TSRegistrations) GetByAddr(address string) *Peer {
 	s.m.Lock()
 	defer s.m.Unlock()
 	return s.store.GetByAddr(address)
 }
 
 // GetByPbk find a peer by its Pbk
-func (s *TSStore) GetByPbk(pbk []byte) *Peer {
+func (s *TSRegistrations) GetByPbk(pbk []byte) *Peer {
 	s.m.Lock()
 	defer s.m.Unlock()
 	return s.store.GetByPbk(pbk)
 }
 
 // RemoveByAddr removes all peer with given address
-func (s *TSStore) RemoveByAddr(address string) bool {
+func (s *TSRegistrations) RemoveByAddr(address string) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
 	return s.store.RemoveByAddr(address)
 }
 
 // RemoveByPbk removes all peer with given pbk
-func (s *TSStore) RemoveByPbk(pbk []byte) bool {
+func (s *TSRegistrations) RemoveByPbk(pbk []byte) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
 	return s.store.RemoveByPbk(pbk)
 }
 
 // HasAddr return true if a peer has given address
-func (s *TSStore) HasAddr(address string) bool {
+func (s *TSRegistrations) HasAddr(address string) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
 	return s.store.HasAddr(address)
 }
 
 // HasPbk return true if a peer has given pbk
-func (s *TSStore) HasPbk(pbk []byte) bool {
+func (s *TSRegistrations) HasPbk(pbk []byte) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
 	return s.store.HasPbk(pbk)

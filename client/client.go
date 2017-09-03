@@ -1,100 +1,109 @@
 package client
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"net"
 
+	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
 
 	"github.com/mh-cbon/rendez-vous/model"
+	"github.com/mh-cbon/rendez-vous/socket"
 )
 
-// FromAddr is a ctor
-func FromAddr(address string) (*Client, error) {
-	protocol := "udp"
+var logger = logging.MustGetLogger("rendez-vous")
 
-	udpAddr, err := net.ResolveUDPAddr(protocol, address)
-	if err != nil {
-		return nil, err
-	}
-	conn, err := net.ListenUDP(protocol, udpAddr)
-	if err != nil {
-		return nil, err
-	}
-	return &Client{conn: conn}, nil
+// FromSocket ...
+func FromSocket(s socket.Socket) Client {
+	return Client{s}
 }
-
-// FromConn is a ctor
-func FromConn(conn *net.UDPConn) *Client { return &Client{conn: conn} }
 
 // Client to speak with a rendez-vous server
 type Client struct {
-	conn *net.UDPConn
+	s socket.Socket
 }
 
-func (c *Client) query(remote *net.UDPAddr, q model.Message) (model.Message, error) {
+func (c *Client) query(remote string, q model.Message) (model.Message, error) {
 	var ret model.Message
+	addr, err := net.ResolveUDPAddr("udp", remote)
+	if err != nil {
+		return ret, err
+	}
 	data, err := json.Marshal(q)
 	if err != nil {
 		return ret, errors.WithMessage(err, "query marshal")
 	}
-	if _, err2 := c.conn.WriteToUDP(data, remote); err2 != nil {
-		return ret, errors.WithMessage(err, "query write")
+	w := make(chan error)
+	queryErr := c.s.Query(data, addr, func(data []byte, timedout bool) error {
+		var replyErr error
+		if timedout {
+			replyErr = errors.New("query has timedout")
+		} else if replyErr = json.Unmarshal(data, &ret); replyErr != nil {
+			replyErr = errors.WithMessage(replyErr, "response unmarshal")
+		}
+		w <- replyErr
+		return replyErr
+	})
+	if queryErr == nil {
+		queryErr = <-w
 	}
-	res := make([]byte, 1000)
-	n, err := c.conn.Read(res)
-	if err != nil {
-		return ret, errors.WithMessage(err, "response read")
-	}
-	res = res[:n]
-	if err := json.Unmarshal(res, &ret); err != nil {
-		return ret, errors.WithMessage(err, "response unmarshal")
-	}
-	return ret, nil
-}
-
-// Conn returns the underlying udp conn
-func (c *Client) Conn() *net.UDPConn {
-	return c.conn
+	return ret, queryErr
 }
 
 // Ping remote
-func (c *Client) Ping(remote *net.UDPAddr) (model.Message, error) {
+func (c *Client) Ping(remote string) (model.Message, error) {
 	m := model.Message{
-		Type:  "q",
+		// Type:  "q",
 		Query: model.Ping,
 	}
 	return c.query(remote, m)
 }
 
 // Find peer for given pbk
-func (c *Client) Find(remote *net.UDPAddr, pbk []byte) (model.Message, error) {
+func (c *Client) Find(remote string, pbk string) (model.Message, error) {
+	bPbk, err := hex.DecodeString(pbk)
+	if err != nil {
+		return model.Message{}, err
+	}
 	m := model.Message{
-		Type:  "q",
+		// Type:  "q",
 		Query: model.Find,
-		Pbk:   pbk,
+		Pbk:   bPbk,
 	}
 	return c.query(remote, m)
 }
 
 // Register yourself
-func (c *Client) Register(remote *net.UDPAddr, pbk []byte, sign []byte, value string) (model.Message, error) {
+func (c *Client) Register(remote string, pbk string, sign string, value string) (model.Message, error) {
+	bPbk, err := hex.DecodeString(pbk)
+	if err != nil {
+		return model.Message{}, err
+	}
+	bSign, err2 := hex.DecodeString(sign)
+	if err2 != nil {
+		return model.Message{}, err2
+	}
 	m := model.Message{
-		Type:  "q",
+		// Type:  "q",
 		Query: model.Register,
-		Pbk:   pbk,
-		Sign:  sign,
+		Pbk:   bPbk,
+		Sign:  bSign,
 		Value: value,
 	}
 	return c.query(remote, m)
 }
 
 // Unregister yourself
-func (c *Client) Unregister(remote *net.UDPAddr, pbk []byte) (model.Message, error) {
+func (c *Client) Unregister(remote string, pbk string) (model.Message, error) {
+	bPbk, err := hex.DecodeString(pbk)
+	if err != nil {
+		return model.Message{}, err
+	}
 	m := model.Message{
-		Type:  "q",
+		// Type:  "q",
 		Query: model.Unregister,
-		Pbk:   pbk,
+		Pbk:   bPbk,
 	}
 	return c.query(remote, m)
 }

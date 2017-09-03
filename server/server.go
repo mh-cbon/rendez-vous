@@ -2,12 +2,13 @@ package server
 
 import (
 	"encoding/json"
-	"log"
+	"net"
 
 	"github.com/mh-cbon/dht/ed25519"
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/socket"
 	"github.com/mh-cbon/rendez-vous/store"
+	logging "github.com/op/go-logging"
 )
 
 var (
@@ -23,87 +24,124 @@ var (
 	notFound = 404
 )
 
-// Handler of a rendez-vous server
-func Handler(storage *store.TSStore) socket.Handler {
-	return func(data []byte, remote socket.Socket) error {
+var logger = logging.MustGetLogger("rendez-vous")
 
-		var v model.Message
-		err := json.Unmarshal(data, &v)
-		if err != nil {
-			return err
-		}
-
-		log.Println(remote.Addr(), "<-", v)
-
-		switch v.Query {
-
-		case model.Ping:
-			return sendError(remote, okCode)
-
-		case model.Register:
-			if len(v.Pbk) == 0 {
-				return sendError(remote, missingPbk)
-			}
-			if len(v.Pbk) != 32 {
-				return sendError(remote, wrongPbk)
-			}
-			if len(v.Sign) == 0 {
-				return sendError(remote, missingSign)
-			}
-			if len(v.Value) > 100 {
-				return sendError(remote, invalidValue)
-			}
-			if ed25519.Verify(v.Pbk, []byte(v.Value), v.Sign) == false {
-				return sendError(remote, invalidSign)
-			}
-			addr := remote.Addr() //is it a safe value ?
-			storage.RemoveByAddr(addr)
-			storage.Add(addr, v.Pbk)
-
-			return sendError(remote, okCode)
-
-		case model.Unregister:
-			if len(v.Pbk) == 0 {
-				return sendError(remote, missingPbk)
-			}
-
-			addr := remote.Addr() //is it a safe value ?
-			storage.RemoveByAddr(addr)
-
-			return sendError(remote, okCode)
-
-		case model.Find:
-			if len(v.Pbk) == 0 {
-				return sendError(remote, missingPbk)
-			}
-			peer := storage.GetByPbk(v.Pbk)
-			if peer == nil {
-				return sendError(remote, notFound)
-			}
-
-			return sendOk(remote, peer.Address)
-
-		default:
-			return sendError(remote, wrongQuery)
-		}
-	}
+// FromSocket ...
+func FromSocket(s socket.Socket) Server {
+	return Server{s, store.New(nil)}
 }
 
-func reply(remote socket.Socket, m model.Message) error {
-	m.Address = remote.Addr()
-	m.Type = "r"
-	b, err := json.Marshal(m)
+// Server ...
+type Server struct {
+	s             socket.Socket
+	registrations *store.TSRegistrations
+}
+
+//Close ...
+func (s *Server) Close() error {
+	return s.s.Close()
+}
+
+//Listen ...
+func (s *Server) Listen() error {
+	return s.s.Listen(s.handleQuery)
+}
+
+//HandleQuery ...
+func (s *Server) handleQuery(remote net.Addr, data []byte, writer socket.ResponseWriter) error {
+
+	var v model.Message
+	err := json.Unmarshal(data, &v)
 	if err != nil {
 		return err
 	}
-	log.Println(remote.Addr(), "->", m)
-	return remote.Write(b)
+
+	logger.Info(remote.String(), "<-", v)
+
+	var res *model.Message
+
+	switch v.Query {
+
+	case model.Ping:
+		res = replyOk(remote, "")
+
+	case model.Register:
+
+		if len(v.Pbk) == 0 {
+			res = replyError(remote, missingPbk)
+
+		} else if len(v.Pbk) != 32 {
+			res = replyError(remote, wrongPbk)
+
+		} else if len(v.Sign) == 0 {
+			res = replyError(remote, missingSign)
+
+		} else if len(v.Value) > 100 {
+			res = replyError(remote, invalidValue)
+
+		} else if ed25519.Verify(v.Pbk, []byte(v.Value), v.Sign) == false {
+			res = replyError(remote, invalidSign)
+
+		} else {
+			addr := remote.String() //is it a safe value ?
+			go func() {
+				s.registrations.RemoveByAddr(addr)
+				s.registrations.Add(addr, v.Pbk)
+			}()
+			res = replyOk(remote, "")
+		}
+
+	case model.Unregister:
+		if len(v.Pbk) == 0 {
+			res = replyError(remote, missingPbk)
+
+		} else {
+			addr := remote.String() //is it a safe value ?
+			go s.registrations.RemoveByAddr(addr)
+			res = replyOk(remote, "")
+		}
+
+	case model.Find:
+		if len(v.Pbk) == 0 {
+			res = replyError(remote, missingPbk)
+
+		} else if peer := s.registrations.GetByPbk(v.Pbk); peer != nil {
+			res = replyOk(remote, peer.Address)
+
+		} else {
+			res = replyError(remote, notFound)
+		}
+
+	case model.Join:
+		//todo: Join the swarm
+	case model.Leave:
+		//todo: leave the swarm
+	}
+
+	if res != nil {
+		b, err := json.Marshal(*res)
+		if err != nil {
+			return err
+		}
+		return writer(b)
+	}
+	return nil
 }
 
-func sendError(remote socket.Socket, code int) error {
-	return reply(remote, model.Message{Type: "r", Code: code})
+func reply(remote net.Addr) *model.Message {
+	var m model.Message
+	m.Address = remote.String()
+	// m.Type = "r"
+	return &m
 }
-
-func sendOk(remote socket.Socket, v string) error {
-	return reply(remote, model.Message{Type: "r", Code: okCode, Response: v})
+func replyError(remote net.Addr, code int) *model.Message {
+	m := reply(remote)
+	m.Code = code
+	return m
+}
+func replyOk(remote net.Addr, data string) *model.Message {
+	m := reply(remote)
+	m.Code = okCode
+	m.Response = data
+	return m
 }

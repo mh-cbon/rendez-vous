@@ -1,0 +1,24 @@
+<html>
+<head>
+  <title>me.com: myself on the internet</title>
+  <script src="jquery-3.2.1.min.js"></script>
+</head>
+<body>
+
+  <div align="center">
+    Find: <input type="text" id="search" style="width:60%" /><input type="button" value="find" id="bt" />
+  </div>
+  <script>
+    $("#search").css("border", "solid 1px gray")
+    $("#bt").click(function(){
+      var v = $("#search").val();
+      if (v == "") {
+        $("#search").css("border", "solid 1px red")
+      } else {
+        $("#search").css("border", "solid 1px gray")
+        window.open("http://"+v+".me.com/")
+      }
+    })
+  </script>
+</body>
+</html>
