@@ -98,6 +98,7 @@ func main() {
 	flag.Parse()
 
 	if *sHelp || *lHelp {
+		showHelp(flag.CommandLine)
 		return
 	} else if *sVersion || *lVersion {
 		showVersion()
@@ -306,10 +307,12 @@ func runWebsite(opts websiteOpts) {
 
 	pc := ln.(*utp.Socket)
 	c := client.FromSocket(socket.FromConn(pc))
-	_, err = c.Register(opts.remote, opts.pbk, opts.pbk, opts.value)
+	res, err = c.Register(opts.remote, opts.pbk, opts.pbk, opts.value)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Println("registration ", res)
 
 	srv := &http.Server{
 		Handler: http.FileServer(http.Dir(opts.dir)),

@@ -1,9 +1,11 @@
-package dispatcher
+package dispatcher_test
 
 import (
 	"log"
 	"net"
 	"testing"
+
+	"github.com/mh-cbon/rendez-vous/dispatcher"
 )
 
 func Test1(t *testing.T) {
@@ -12,7 +14,7 @@ func Test1(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer alice.Close()
-	rdispatch := New(alice)
+	rdispatch := dispatcher.New(alice)
 	rstream1 := rdispatch.New("stream1")
 	rstream2 := rdispatch.New("stream2")
 
@@ -35,7 +37,7 @@ func Test1(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer bob.Close()
-	wdispatch := New(bob)
+	wdispatch := dispatcher.New(bob)
 	wstream0 := wdispatch.New("nop")
 	wstream1 := wdispatch.New("stream1")
 	wstream2 := wdispatch.New("stream2")
