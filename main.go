@@ -279,10 +279,11 @@ func runServer(opts srvOpts) error {
 		return err
 	}
 
-	done := make(chan error)
-	go handleSignal(done, conn.Close)
-
 	srv := server.FromSocket(socket.FromConn(conn))
+
+	done := make(chan error)
+	go handleSignal(done, srv.Close)
+
 	readyErr := ready(func() error {
 		log.Println("Listening...", ":"+opts.listen)
 		return nil
@@ -300,9 +301,10 @@ func runClient(opts cliOpts) error {
 		return err
 	}
 
-	go handleSignal(nil, conn.Close)
+	socket := socket.FromConn(conn)
+	c := client.FromSocket(socket)
 
-	c := client.FromSocket(socket.FromConn(conn))
+	defer socket.Close()
 
 	readyErr := ready(func() error {
 
@@ -376,12 +378,12 @@ func runWebsite(opts websiteOpts) error {
 	pc := ln.(*utp.Socket)
 	c := client.FromSocket(socket.FromConn(pc))
 
-	done := make(chan error)
-	go handleSignal(done, ln.Close)
-
 	handler := http.FileServer(http.Dir(opts.dir))
-	public := httpu{httpServer(handler, ""), ln}
+	public := httpu{httpServer(handler, ""), ln} //todo: replace with a transparent proxy, so the website can live into another process
 	local := httpServer(handler, "127.0.0.1:"+opts.local)
+
+	done := make(chan error)
+	go handleSignal(done, ln.Close, public.Close, local.Close)
 
 	readyErr := ready(func() error {
 		log.Println("Public Website listening on ", ln.Addr())
@@ -419,9 +421,6 @@ func runBrowser(opts browserOpts) error {
 	pc := ln.(*utp.Socket)
 	c := client.FromSocket(socket.FromConn(pc))
 
-	done := make(chan error)
-	go handleSignal(done, ln.Close)
-
 	registration := client.NewRegistration(time.Second*5, c)
 
 	wsAddr := "127.0.0.1:" + opts.ws
@@ -430,6 +429,9 @@ func runBrowser(opts browserOpts) error {
 
 	browserProxy := browser.MakeProxyForBrowser(opts.remote, wsAddr, c)
 	proxy := httpServer(browserProxy, "127.0.0.1:"+opts.proxy)
+
+	done := make(chan error)
+	go handleSignal(done, ln.Close, proxy.Close, gateway.Close)
 
 	readyErr := ready(func() error {
 		log.Println("me.com server listening on", "127.0.0.1:"+opts.ws)
