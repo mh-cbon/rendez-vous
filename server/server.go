@@ -65,6 +65,7 @@ func (s *Server) handleQuery(remote net.Addr, data []byte, writer socket.Respons
 		res = model.ReplyOk(remote, "")
 
 	case model.Register:
+		//todo: rendez-vous server should implement a write token
 
 		if len(v.Pbk) == 0 {
 			res = model.ReplyError(remote, missingPbk)
@@ -91,6 +92,7 @@ func (s *Server) handleQuery(remote net.Addr, data []byte, writer socket.Respons
 		}
 
 	case model.Unregister:
+		//todo: unregister should accept/verify a pbk/sig/value with a special value to identify the query issuer.
 		if len(v.Pbk) == 0 {
 			res = model.ReplyError(remote, missingPbk)
 

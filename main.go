@@ -64,7 +64,9 @@ type httpOpts struct {
 	method string
 }
 
-//todo: add storage clean up with ttl on entry
+//todo: rendez-vous server should check ttl registrations
+//todo: rendez-vous server should impelment a write token concept to register
+//todo: rendez-vous server unregister should accept/verify a pbk/sig/value with a special value to identify the query issuer.
 
 var format = logging.MustStringFormatter(
 	`%{color}%{time:15:04:05} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset}: %{message}`,

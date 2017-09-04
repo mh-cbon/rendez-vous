@@ -64,7 +64,7 @@ func (t *Tx) loop() {
 
 func (t *Tx) makeID() uint16 {
 	t.id++
-	//todo: find a better way, 10k is maybe not that much.
+	//todo: find a better way
 	if t.id > 10000 {
 		t.id = 0
 	}
