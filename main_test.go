@@ -1,8 +1,8 @@
 package main_test
 
 import (
+	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -73,12 +73,7 @@ func Test1(t *testing.T) {
 		defer bw.Process.Release()
 
 		{
-			res, err := http.Get("http://127.0.0.1:8085/index.html")
-			if err != nil {
-				t.Error(err)
-			}
-			defer res.Body.Close()
-			_, err = io.Copy(os.Stderr, res.Body)
+			err := geturl(http.DefaultClient, "http://127.0.0.1:8085/index.html")
 			if err != nil {
 				t.Error(err)
 			}
@@ -89,12 +84,7 @@ func Test1(t *testing.T) {
 		}
 		client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}}
 		{
-			res, err := client.Get("http://b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74.me.com/index.html")
-			if err != nil {
-				t.Error(err)
-			}
-			defer res.Body.Close()
-			_, err = io.Copy(os.Stderr, res.Body)
+			err := geturl(client, "http://b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74.me.com/index.html")
 			if err != nil {
 				t.Error(err)
 			}
@@ -102,10 +92,24 @@ func Test1(t *testing.T) {
 	})
 }
 
+func geturl(client *http.Client, u string) error {
+	fmt.Println("HTTP GET ", u)
+	res, err := client.Get(u)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	_, err = io.Copy(os.Stdout, res.Body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func build() error {
 	cmd := exec.Command("go", "build", "-o", "t", "main.go")
 	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = os.Stdout
 	return cmd.Run()
 }
 func clean() error {
@@ -114,10 +118,10 @@ func clean() error {
 }
 
 func makeCmd(b string, args ...string) *exec.Cmd {
-	log.Println("go run main.go", strings.Join(args, " "))
+	fmt.Println("go run main.go", strings.Join(args, " "))
 	cmd := exec.Command(b, args...)
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdout
 	return cmd
 }
 
