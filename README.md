@@ -33,38 +33,39 @@ Usage of main:
 ```sh
 === RUN   Test1
 === RUN   Test1/1
-2017/09/05 00:01:58 go run main.go serve -listen 8070
-2017/09/05 00:01:58 Listening... :8070
-2017/09/05 00:01:59 go run main.go client -query ping -remote :8070
-2017/09/05 00:01:59 [::1]:60326 <- {ping 0 [] []   }
-model.Message{Query:"", Code:200, Pbk:[]uint8(nil), Sign:[]uint8(nil), Value:"", Address:"[::1]:60326", Response:""}
+go run main.go serve -listen 8070
+2017/09/05 00:10:12 Listening... :8070
+go run main.go client -query ping -remote :8070
+2017/09/05 00:10:13 [::1]:41487 <- {ping 0 [] []   }
+model.Message{Query:"", Code:200, Pbk:[]uint8(nil), Sign:[]uint8(nil), Value:"", Address:"[::1]:41487", Response:""}
 === RUN   Test1/2
-2017/09/05 00:01:59 go run main.go serve -listen 8090
-2017/09/05 00:01:59 Listening... :8090
-2017/09/05 00:02:00 go run main.go website -remote :8090 -listen 8091 -local 8092 -pvk 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e -static demows
-2017/09/05 00:02:00 Public Website listening on  [::]:8091
-2017/09/05 00:02:00 Local Website listening on  127.0.0.1:8092
+go run main.go serve -listen 8090
+2017/09/05 00:10:13 Listening... :8090
+go run main.go website -remote :8090 -listen 8091 -local 8092 -pvk 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e -static demows
+2017/09/05 00:10:14 Public Website listening on  [::]:8091
+2017/09/05 00:10:14 Local Website listening on  127.0.0.1:8092
 pvk= 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e
 pbk= b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74
 sig= cdd8ea95c3f2957edf80d6a77d7efd93c5678453637a6fdfd6b2c8da286a93d3a36fa67dd246d598752bcd1c0f29ff542a37d853db98747f7d667c9307bc190a
-2017/09/05 00:02:00 [::1]:8091 <- {reg 0 [182 184 17 55 72 254 7 149 101 143 169 214 171 62 54 210 125 114 233 123 125 244 7 231 168 8 13 97 236 64 93 116] [205 216 234 149 195 242 149 126 223 128 214 167 125 126 253 147 197 103 132 83 99 122 111 223 214 178 200 218 40 106 147 211 163 111 166 125 210 70 213 152 117 43 205 28 15 41 255 84 42 55 216 83 219 152 116 127 125 102 124 147 7 188 25 10] website  }
-2017/09/05 00:02:00 registration  { 200 [] []  [::1]:8091 }
-2017/09/05 00:02:01 go run main.go http -url http://127.0.0.1:8091/index.html
+2017/09/05 00:10:14 [::1]:8091 <- {reg 0 [182 184 17 55 72 254 7 149 101 143 169 214 171 62 54 210 125 114 233 123 125 244 7 231 168 8 13 97 236 64 93 116] [205 216 234 149 195 242 149 126 223 128 214 167 125 126 253 147 197 103 132 83 99 122 111 223 214 178 200 218 40 106 147 211 163 111 166 125 210 70 213 152 117 43 205 28 15 41 255 84 42 55 216 83 219 152 116 127 125 102 124 147 7 188 25 10] website  }
+2017/09/05 00:10:14 registration  { 200 [] []  [::1]:8091 }
+go run main.go http -url http://127.0.0.1:8091/index.html
 A demo website.
 <img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg" />
 === RUN   Test1/3
-2017/09/05 00:02:01 go run main.go serve -listen 8080
-2017/09/05 00:02:01 Listening... :8080
-2017/09/05 00:02:02 go run main.go website -remote :8080 -listen 8081 -local 8082 -pvk 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e -static demows
-2017/09/05 00:02:02 Public Website listening on  [::]:8081
-2017/09/05 00:02:02 Local Website listening on  127.0.0.1:8082
+go run main.go serve -listen 8080
+2017/09/05 00:10:15 Listening... :8080
+go run main.go website -remote :8080 -listen 8081 -local 8082 -pvk 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e -static demows
+2017/09/05 00:10:16 Public Website listening on  [::]:8081
+2017/09/05 00:10:16 Local Website listening on  127.0.0.1:8082
 pvk= 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e
 pbk= b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74
 sig= cdd8ea95c3f2957edf80d6a77d7efd93c5678453637a6fdfd6b2c8da286a93d3a36fa67dd246d598752bcd1c0f29ff542a37d853db98747f7d667c9307bc190a
-2017/09/05 00:02:02 [::1]:8081 <- {reg 0 [182 184 17 55 72 254 7 149 101 143 169 214 171 62 54 210 125 114 233 123 125 244 7 231 168 8 13 97 236 64 93 116] [205 216 234 149 195 242 149 126 223 128 214 167 125 126 253 147 197 103 132 83 99 122 111 223 214 178 200 218 40 106 147 211 163 111 166 125 210 70 213 152 117 43 205 28 15 41 255 84 42 55 216 83 219 152 116 127 125 102 124 147 7 188 25 10] website  }
-2017/09/05 00:02:02 registration  { 200 [] []  [::1]:8081 }
-2017/09/05 00:02:03 go run main.go browser -remote :8080 -listen 8083 -ws 8085 -proxy 8084 -headless
-2017/09/05 00:02:03 me.com server listening on 127.0.0.1:8085
+2017/09/05 00:10:16 [::1]:8081 <- {reg 0 [182 184 17 55 72 254 7 149 101 143 169 214 171 62 54 210 125 114 233 123 125 244 7 231 168 8 13 97 236 64 93 116] [205 216 234 149 195 242 149 126 223 128 214 167 125 126 253 147 197 103 132 83 99 122 111 223 214 178 200 218 40 106 147 211 163 111 166 125 210 70 213 152 117 43 205 28 15 41 255 84 42 55 216 83 219 152 116 127 125 102 124 147 7 188 25 10] website  }
+2017/09/05 00:10:16 registration  { 200 [] []  [::1]:8081 }
+go run main.go browser -remote :8080 -listen 8083 -ws 8085 -proxy 8084 -headless
+2017/09/05 00:10:17 me.com server listening on 127.0.0.1:8085
+HTTP GET  http://127.0.0.1:8085/index.html
 <html>
 <head>
   <title>me.com: myself on the internet</title>
@@ -89,6 +90,7 @@ sig= cdd8ea95c3f2957edf80d6a77d7efd93c5678453637a6fdfd6b2c8da286a93d3a36fa67dd24
   </script>
 </body>
 </html>
+HTTP GET  http://b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74.me.com/index.html
 <html>
 <head>
   <title>me.com: myself on the internet</title>
@@ -113,12 +115,12 @@ sig= cdd8ea95c3f2957edf80d6a77d7efd93c5678453637a6fdfd6b2c8da286a93d3a36fa67dd24
   </script>
 </body>
 </html>
---- PASS: Test1 (7.11s)
+--- PASS: Test1 (7.01s)
     --- PASS: Test1/1 (1.02s)
     --- PASS: Test1/2 (2.02s)
-    --- PASS: Test1/3 (3.02s)
+    --- PASS: Test1/3 (3.01s)
 PASS
-ok  	github.com/mh-cbon/rendez-vous	7.116s
+ok  	github.com/mh-cbon/rendez-vous	7.017s
 ```
 
 # todos
