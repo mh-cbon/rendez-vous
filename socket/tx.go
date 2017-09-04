@@ -44,19 +44,12 @@ type pendingQuery struct {
 	create time.Time
 }
 
-// // TxMessage ...
-// type TxMessage struct {
-// 	Kind string `json:"k,omitempty"`
-// 	TxID int64  `json:"t,omitempty"`
-// 	Data []byte `json:"d,omitempty"`
-// }
-
 func (t *Tx) loop() {
-	for ; ; <-time.After(time.Millisecond * 100) {
+	for {
 		select {
 		case <-t.closed:
 			return
-		default:
+		case <-time.After(time.Millisecond * 100):
 			t.l.Lock()
 			for index, p := range t.transactions {
 				if p.create.Add(time.Second * 5).Before(time.Now()) {
@@ -84,10 +77,6 @@ func (t *Tx) Query(data []byte, remote net.Addr, h ResponseHandler) error {
 	txID := t.makeID()
 	t.transactions[txID] = pendingQuery{h, time.Now()}
 	t.l.Unlock()
-	// b, err := json.Marshal(TxMessage{"q", id, data})
-	// if err != nil {
-	// 	return err
-	// }
 	b := make([]byte, binary.MaxVarintLen16)
 	binary.LittleEndian.PutUint16(b, txID)
 	data = append(b, data...)
@@ -99,10 +88,6 @@ func (t *Tx) Query(data []byte, remote net.Addr, h ResponseHandler) error {
 
 // Reply to a remote
 func (t *Tx) Reply(data []byte, remote net.Addr, txID uint16) error {
-	// b, err := json.Marshal(TxMessage{"r", txID, data})
-	// if err != nil {
-	// 	return err
-	// }
 	b := make([]byte, binary.MaxVarintLen16)
 	binary.LittleEndian.PutUint16(b, txID)
 	data = append(b, data...)
@@ -126,19 +111,17 @@ func (t *Tx) Listen(queryHandler TxHandler) error {
 	t.closed = make(chan bool)
 	go t.loop()
 	return t.UDP.Listen(func(data []byte, remote net.Addr) error {
-		// var v TxMessage
-		// err := json.Unmarshal(data, &v)
-		// if err != nil {
-		// 	return err
-		// }
 		if len(data) < 1 {
 			return fmt.Errorf("data too small")
 		}
 		kind := string(data[0])
 		data = data[1:]
-		txID := binary.LittleEndian.Uint16(data[1 : binary.MaxVarintLen16+1])
-		data = data[binary.MaxVarintLen16+2:]
+		txID := binary.LittleEndian.Uint16(data[:binary.MaxVarintLen16])
+		data = data[binary.MaxVarintLen16:]
 		if kind == "q" {
+			if queryHandler == nil {
+				return nil
+			}
 			return queryHandler(remote, data, func(data []byte) error {
 				return t.Reply(data, remote, txID)
 			})

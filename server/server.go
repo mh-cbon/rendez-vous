@@ -9,11 +9,10 @@ import (
 	"github.com/mh-cbon/rendez-vous/socket"
 	"github.com/mh-cbon/rendez-vous/store"
 	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
 var (
-	okCode = 200
-
 	missingPbk   = 301
 	missingSign  = 302
 	invalidValue = 303
@@ -27,8 +26,8 @@ var (
 var logger = logging.MustGetLogger("rendez-vous")
 
 // FromSocket ...
-func FromSocket(s socket.Socket) Server {
-	return Server{s, store.New(nil)}
+func FromSocket(s socket.Socket) *Server {
+	return &Server{s, store.New(nil)}
 }
 
 // Server ...
@@ -53,7 +52,7 @@ func (s *Server) handleQuery(remote net.Addr, data []byte, writer socket.Respons
 	var v model.Message
 	err := json.Unmarshal(data, &v)
 	if err != nil {
-		return err
+		return errors.WithMessage(err, "json unmarshal")
 	}
 
 	logger.Info(remote.String(), "<-", v)
@@ -63,24 +62,24 @@ func (s *Server) handleQuery(remote net.Addr, data []byte, writer socket.Respons
 	switch v.Query {
 
 	case model.Ping:
-		res = replyOk(remote, "")
+		res = model.ReplyOk(remote, "")
 
 	case model.Register:
 
 		if len(v.Pbk) == 0 {
-			res = replyError(remote, missingPbk)
+			res = model.ReplyError(remote, missingPbk)
 
 		} else if len(v.Pbk) != 32 {
-			res = replyError(remote, wrongPbk)
+			res = model.ReplyError(remote, wrongPbk)
 
 		} else if len(v.Sign) == 0 {
-			res = replyError(remote, missingSign)
+			res = model.ReplyError(remote, missingSign)
 
 		} else if len(v.Value) > 100 {
-			res = replyError(remote, invalidValue)
+			res = model.ReplyError(remote, invalidValue)
 
 		} else if ed25519.Verify(v.Pbk, []byte(v.Value), v.Sign) == false {
-			res = replyError(remote, invalidSign)
+			res = model.ReplyError(remote, invalidSign)
 
 		} else {
 			addr := remote.String() //is it a safe value ?
@@ -88,28 +87,28 @@ func (s *Server) handleQuery(remote net.Addr, data []byte, writer socket.Respons
 				s.registrations.RemoveByAddr(addr)
 				s.registrations.Add(addr, v.Pbk)
 			}()
-			res = replyOk(remote, "")
+			res = model.ReplyOk(remote, "")
 		}
 
 	case model.Unregister:
 		if len(v.Pbk) == 0 {
-			res = replyError(remote, missingPbk)
+			res = model.ReplyError(remote, missingPbk)
 
 		} else {
 			addr := remote.String() //is it a safe value ?
 			go s.registrations.RemoveByAddr(addr)
-			res = replyOk(remote, "")
+			res = model.ReplyOk(remote, "")
 		}
 
 	case model.Find:
 		if len(v.Pbk) == 0 {
-			res = replyError(remote, missingPbk)
+			res = model.ReplyError(remote, missingPbk)
 
 		} else if peer := s.registrations.GetByPbk(v.Pbk); peer != nil {
-			res = replyOk(remote, peer.Address)
+			res = model.ReplyOk(remote, peer.Address)
 
 		} else {
-			res = replyError(remote, notFound)
+			res = model.ReplyError(remote, notFound)
 		}
 
 	case model.Join:
@@ -121,27 +120,9 @@ func (s *Server) handleQuery(remote net.Addr, data []byte, writer socket.Respons
 	if res != nil {
 		b, err := json.Marshal(*res)
 		if err != nil {
-			return err
+			return errors.WithMessage(err, "json marshal")
 		}
 		return writer(b)
 	}
 	return nil
-}
-
-func reply(remote net.Addr) *model.Message {
-	var m model.Message
-	m.Address = remote.String()
-	// m.Type = "r"
-	return &m
-}
-func replyError(remote net.Addr, code int) *model.Message {
-	m := reply(remote)
-	m.Code = code
-	return m
-}
-func replyOk(remote net.Addr, data string) *model.Message {
-	m := reply(remote)
-	m.Code = okCode
-	m.Response = data
-	return m
 }

@@ -2,24 +2,22 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
-	"regexp"
-	"strings"
+	"os/signal"
 	"time"
 
 	"github.com/anacrolix/utp"
-	"github.com/elazarl/goproxy"
-	"github.com/gorilla/mux"
-	"github.com/mh-cbon/dht/ed25519"
+	"github.com/mh-cbon/rendez-vous/browser"
 	"github.com/mh-cbon/rendez-vous/client"
+	"github.com/mh-cbon/rendez-vous/identity"
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/server"
 	"github.com/mh-cbon/rendez-vous/socket"
@@ -37,6 +35,7 @@ type cliOpts struct {
 	remote string
 	query  string
 	pbk    string
+	pvk    string
 	value  string
 	sign   string
 	auto   bool
@@ -44,19 +43,25 @@ type cliOpts struct {
 
 type websiteOpts struct {
 	listen string
+	local  string
 	remote string
 	dir    string
-	pbk    string
+	pvk    string
 	value  string
-	sign   string
-	auto   bool
 }
 
 type browserOpts struct {
-	listen string
-	remote string
-	proxy  string
-	ws     string
+	listen   string
+	remote   string
+	proxy    string
+	ws       string
+	dir      string
+	headless bool
+}
+
+type httpOpts struct {
+	url    string
+	method string
 }
 
 //todo: add storage clean up with ttl on entry
@@ -65,19 +70,23 @@ var format = logging.MustStringFormatter(
 	`%{color}%{time:15:04:05} %{shortfunc} ▶ %{level:.4s} %{id:03x}%{color:reset}: %{message}`,
 )
 
-func showErr(flags *flag.FlagSet, reason string) {
+func showErr(flags *flag.FlagSet, reason ...interface{}) {
 	showHelp(flags)
 	fmt.Println()
-	fmt.Println("Wrong command line: ", reason)
+	fmt.Print("Wrong command line: ")
+	fmt.Println(reason...)
 }
 func showHelp(flags *flag.FlagSet) {
 	showVersion()
 	fmt.Println("")
 	fmt.Println("	A server to expose your endpoints with a public key.")
 	fmt.Println("	A client to find/register endpoints for a public key.")
+	fmt.Println("	A website to expose website.")
+	fmt.Println("	A browser to visit remote website.")
+	fmt.Println("	An http client to test a remote website..")
 	fmt.Println("")
 	fmt.Println("Usage")
-	fmt.Println("	rendez-vous [server|client] <options>")
+	fmt.Println("	rendez-vous [server|client|website|browser|http] <options>")
 	if flags != nil {
 		fmt.Println("")
 		flags.Usage()
@@ -89,6 +98,7 @@ func showVersion() {
 
 func main() {
 
+	flag.CommandLine = flag.NewFlagSet("main", flag.ExitOnError) // get ride of all test* flags.
 	sHelp := flag.Bool("h", false, "show help")
 	lHelp := flag.Bool("help", false, "show help")
 
@@ -97,15 +107,19 @@ func main() {
 
 	flag.Parse()
 
-	if *sHelp || *lHelp {
+	if len(os.Args) < 2 {
 		showHelp(flag.CommandLine)
 		return
-	} else if *sVersion || *lVersion {
-		showVersion()
-		return
-	} else if len(os.Args) < 2 {
-		showErr(flag.CommandLine, "Missing operation (server|client)")
-		return
+
+	} else if len(os.Args) < 3 {
+
+		if *sHelp || *lHelp {
+			showHelp(flag.CommandLine)
+			return
+		} else if *sVersion || *lVersion {
+			showVersion()
+			return
+		}
 	}
 
 	op := os.Args[1]
@@ -127,7 +141,9 @@ func main() {
 			return
 		}
 
-		runServer(opts)
+		if err := runServer(opts); err != nil {
+			log.Fatal(err)
+		}
 
 	} else if op == "client" {
 
@@ -136,12 +152,11 @@ func main() {
 		set.StringVar(&opts.listen, "listen", "0", "Port to listen")
 		set.StringVar(&opts.remote, "remote", "", "Address of the rendez-vous")
 		set.StringVar(&opts.query, "query", "", "Query to send (ping|find|register|unregister)")
-		set.BoolVar(&opts.auto, "auto", false, "Generate pvk/pbk/sign automatically")
-		set.StringVar(&opts.pbk, "pbk", "", "Pbk of the query in hexadecimal")
+		set.StringVar(&opts.pbk, "pbk", "", "Pbk to lookup for")
+		set.StringVar(&opts.pvk, "pvk", "", "Pvk of the registration in hexadecimal")
 		set.StringVar(&opts.value, "value", "", "Value of the query")
-		set.StringVar(&opts.sign, "sign", "", "Sign of the query in hexadecimal")
-		sHelp = set.Bool("-h", false, "show help")
-		lHelp = set.Bool("-help", false, "show help")
+		sHelp = set.Bool("h", false, "show help")
+		lHelp = set.Bool("help", false, "show help")
 		set.Parse(args)
 		if *sHelp || *lHelp {
 			showHelp(set)
@@ -159,18 +174,20 @@ func main() {
 			showErr(set, "-query argument is invalid")
 			return
 		}
-		runClient(opts)
+
+		if err := runClient(opts); err != nil {
+			log.Fatal(err)
+		}
 
 	} else if op == "website" {
 		var opts websiteOpts
 		set := flag.NewFlagSet(op, flag.ExitOnError)
-		set.StringVar(&opts.listen, "listen", "0", "Port to listen")
+		set.StringVar(&opts.listen, "listen", "0", "Public port")
+		set.StringVar(&opts.local, "local", "9005", "Local port")
 		set.StringVar(&opts.dir, "static", "./static", "Directory to serve")
 		set.StringVar(&opts.remote, "remote", "", "Address of the rendez-vous")
-		set.BoolVar(&opts.auto, "auto", false, "Generate pvk/pbk/sign automatically")
-		set.StringVar(&opts.pbk, "pbk", "", "Pbk of the query in hexadecimal")
-		set.StringVar(&opts.value, "value", "", "Value of the query")
-		set.StringVar(&opts.sign, "sign", "", "Sign of the query in hexadecimal")
+		set.StringVar(&opts.pvk, "pvk", "", "Pvk used for registration, it is random if not empty")
+		set.StringVar(&opts.value, "value", "website", "Value to to sign")
 		sHelp = set.Bool("h", false, "show help")
 		lHelp = set.Bool("help", false, "show help")
 		set.Parse(args)
@@ -187,15 +204,19 @@ func main() {
 			return
 		}
 
-		runWebsite(opts)
+		if err := runWebsite(opts); err != nil {
+			log.Fatal(err)
+		}
 
 	} else if op == "browser" {
 		var opts browserOpts
 		set := flag.NewFlagSet(op, flag.ExitOnError)
-		set.StringVar(&opts.listen, "listen", "0", "Port to listen")
+		set.StringVar(&opts.listen, "listen", "0", "Public port to listen")
 		set.StringVar(&opts.remote, "remote", "", "Address of the rendez-vous")
 		set.StringVar(&opts.proxy, "proxy", "", "Address of the proxy")
-		set.StringVar(&opts.ws, "ws", "", "Address of the local website")
+		set.StringVar(&opts.ws, "ws", "", "Address of the local me.com website")
+		set.StringVar(&opts.dir, "dir", "browser/static/", "Directory of the static assets for me.com")
+		set.BoolVar(&opts.headless, "headless", false, "Headless mode (no gui)")
 		sHelp = set.Bool("h", false, "show help")
 		lHelp = set.Bool("help", false, "show help")
 		set.Parse(args)
@@ -220,171 +241,317 @@ func main() {
 			return
 		}
 
-		runBrowser(opts)
+		if err := runBrowser(opts); err != nil {
+			log.Fatal(err)
+		}
+
+	} else if op == "http" {
+		var opts httpOpts
+		set := flag.NewFlagSet(op, flag.ExitOnError)
+		set.StringVar(&opts.url, "url", "", "URL to fetch http://ip:port/path")
+		sHelp = set.Bool("h", false, "show help")
+		lHelp = set.Bool("help", false, "show help")
+		set.Parse(args)
+		if *sHelp || *lHelp {
+			showHelp(set)
+			return
+		}
+		if opts.url == "" {
+			showErr(set, "-url argument is required")
+			return
+		}
+
+		if err := runHTTPClient(opts); err != nil {
+			log.Fatal(err)
+		}
 
 	} else {
-		log.Fatal("Wrong command line, must be: rendez-vous [server|client|website|browser] <options>")
+		showErr(flag.CommandLine, "Wrong werb ", op)
 	}
 }
 
-func runServer(opts srvOpts) {
+func runServer(opts srvOpts) error {
 
 	conn, err := utils.UDP(":" + opts.listen)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	done := make(chan error)
+	go handleSignal(done, conn.Close)
 
 	srv := server.FromSocket(socket.FromConn(conn))
-	if err := srv.Listen(); err != io.EOF {
-		log.Fatal(err)
+	readyErr := ready(func() error {
+		log.Println("Listening...", ":"+opts.listen)
+		return nil
+	}, srv)
+	if readyErr != nil {
+		return readyErr
 	}
+	return <-done
 }
 
-func runClient(opts cliOpts) {
+func runClient(opts cliOpts) error {
 
 	conn, err := utils.UDP(":" + opts.listen)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	go handleSignal(nil, conn.Close)
 
 	c := client.FromSocket(socket.FromConn(conn))
 
-	{
-		var res model.Message
-		var err error
+	readyErr := ready(func() error {
+
 		if opts.query == "find" {
-			res, err = c.Find(opts.remote, opts.pbk)
+			id, err := identity.FromPbk(opts.pbk, opts.value)
+			if err != nil {
+				return errors.WithMessage(err, opts.query)
+			}
+			res, err := c.Find(opts.remote, id)
+			if err != nil {
+				return errors.WithMessage(err, opts.query)
+			}
+			fmt.Printf("%#v\n", res)
 
 		} else if opts.query == "unregister" {
-			res, err = c.Unregister(opts.remote, opts.pbk)
+
+			id, err := identity.FromPvk(opts.pvk, opts.value)
+			if err != nil {
+				return err
+			}
+			fmt.Println("pvk=", id.Pvk)
+			fmt.Println("pbk=", id.Pbk)
+
+			res, err := c.Unregister(opts.remote, id)
+			if err != nil {
+				return errors.WithMessage(err, opts.query)
+			}
+			fmt.Printf("%#v\n", res)
 
 		} else if opts.query == "register" {
-			if opts.auto {
-				pvk, _, err2 := ed25519.GenerateKey(rand.Reader)
-				if err2 != nil {
-					log.Fatal(err2)
-				}
-				pbk := ed25519.PublicKeyFromPvk(pvk)
-				sign := ed25519.Sign(pvk, pbk, []byte(opts.value))
-				opts.pbk = hex.EncodeToString(pbk)
-				opts.sign = hex.EncodeToString(sign)
+
+			id, err := identity.FromPvk(opts.pvk, opts.value)
+			if err != nil {
+				return err
 			}
-			res, err = c.Register(opts.remote, opts.pbk, opts.sign, opts.value)
+			fmt.Println("pvk=", id.Pvk)
+			fmt.Println("pbk=", id.Pbk)
+			fmt.Println("sig=", id.Sign)
+
+			res, err := c.Register(opts.remote, id)
+			if err != nil {
+				return errors.WithMessage(err, opts.query)
+			}
+			fmt.Printf("%#v\n", res)
 
 		} else if opts.query == "ping" {
-			res, err = c.Ping(opts.remote)
+			res, err := c.Ping(opts.remote)
 			if err != nil {
-				err = errors.WithMessage(err, "query ping")
+				return errors.WithMessage(err, opts.query)
 			}
+			fmt.Printf("%#v\n", res)
 
 		} else {
-			err = fmt.Errorf("Unknwon query %q", opts.query)
+			return errors.Errorf("Unknwon query %q", opts.query)
 		}
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("%#v\n", res)
+		return nil
+	}, c)
+	if readyErr != nil {
+		return readyErr
 	}
+	return nil
 }
 
-func runWebsite(opts websiteOpts) {
-
-	if opts.auto {
-		pvk, _, err2 := ed25519.GenerateKey(rand.Reader)
-		if err2 != nil {
-			log.Fatal(err2)
-		}
-		pbk := ed25519.PublicKeyFromPvk(pvk)
-		sign := ed25519.Sign(pvk, pbk, []byte(opts.value))
-		opts.pbk = hex.EncodeToString(pbk)
-		opts.sign = hex.EncodeToString(sign)
-	}
+func runWebsite(opts websiteOpts) error {
 
 	ln, err := utp.Listen(":" + opts.listen)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	pc := ln.(*utp.Socket)
 	c := client.FromSocket(socket.FromConn(pc))
-	go func() {
-		<-time.After(time.Second)
-		res, err := c.Register(opts.remote, opts.pbk, opts.pbk, opts.value)
+
+	done := make(chan error)
+	go handleSignal(done, ln.Close)
+
+	handler := http.FileServer(http.Dir(opts.dir))
+	public := httpu{httpServer(handler, ""), ln}
+	local := httpServer(handler, "127.0.0.1:"+opts.local)
+
+	readyErr := ready(func() error {
+		log.Println("Public Website listening on ", ln.Addr())
+		log.Println("Local Website listening on ", local.Addr)
+
+		id, err := identity.FromPvk(opts.pvk, opts.value)
 		if err != nil {
-			log.Fatal(err)
+			return err
+		}
+		fmt.Println("pvk=", id.Pvk)
+		fmt.Println("pbk=", id.Pbk)
+		fmt.Println("sig=", id.Sign)
+
+		res, err := c.Register(opts.remote, id)
+		if err != nil {
+			return err
 		}
 
 		log.Println("registration ", res)
-
-		srv := &http.Server{
-			Handler: http.FileServer(http.Dir(opts.dir)),
-		}
-		err = srv.Serve(ln)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-	if err2 := c.Listen(); err2 != nil {
-		log.Fatal(err2)
+		return err
+	}, c, public, local)
+	if readyErr != nil {
+		return readyErr
 	}
+	return <-done
 }
 
-func runBrowser(opts browserOpts) {
+func runBrowser(opts browserOpts) error {
 
 	ln, err := utp.Listen(":" + opts.listen)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	pc := ln.(*utp.Socket)
 	c := client.FromSocket(socket.FromConn(pc))
 
-	r := mux.NewRouter()
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir("./browser/static/")))
-	srv := &http.Server{
+	done := make(chan error)
+	go handleSignal(done, ln.Close)
+
+	registration := client.NewRegistration(time.Second*5, c)
+
+	wsAddr := "127.0.0.1:" + opts.ws
+	wsHandler := browser.MakeWebsite(opts.dir)
+	gateway := httpServer(wsHandler, wsAddr)
+
+	browserProxy := browser.MakeProxyForBrowser(opts.remote, wsAddr, c)
+	proxy := httpServer(browserProxy, "127.0.0.1:"+opts.proxy)
+
+	readyErr := ready(func() error {
+		log.Println("me.com server listening on", "127.0.0.1:"+opts.ws)
+
+		if opts.headless == false {
+			cmd := exec.Command("chromium-browser", "--proxy-server="+proxy.Addr, "me.com")
+			if err := cmd.Start(); err != nil {
+				return err
+			}
+			cmd.Process.Release()
+		}
+
+		return nil
+	}, c, registration, gateway, proxy)
+	if readyErr != nil {
+		return readyErr
+	}
+	return <-done
+}
+
+func runHTTPClient(opts httpOpts) error {
+
+	u, err := url.Parse(opts.url)
+	if err != nil {
+		return errors.WithMessage(err, "url parse")
+	}
+
+	httpClient := http.Client{
+		Transport: &http.Transport{
+			Dial: func(network, addr string) (net.Conn, error) {
+				return utp.Dial(u.Host)
+			},
+		},
+	}
+	res, err := httpClient.Get(u.String())
+	if err != nil {
+		return errors.WithMessage(err, "http get")
+	}
+	defer res.Body.Close()
+	_, err = io.Copy(os.Stdout, res.Body)
+	if err != nil && err != io.EOF {
+		return errors.WithMessage(err, "copy response")
+	}
+	return nil
+}
+
+func handleSignal(done chan error, do ...func() error) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, os.Kill)
+	<-c
+	var err error
+	for _, d := range do {
+		if e := d(); e != nil {
+			err = e
+		}
+	}
+	if done != nil {
+		done <- err
+	}
+}
+
+func httpServer(r http.Handler, addr string) *http.Server {
+	return &http.Server{
 		Handler:      r,
-		Addr:         "127.0.0.1:" + opts.ws,
+		Addr:         addr,
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	log.Println("Listening...", "127.0.0.1:"+opts.ws)
+}
 
-	go func() {
-		if err2 := srv.ListenAndServe(); err2 != nil {
-			log.Fatal(err2)
+type httpu struct {
+	*http.Server
+	l net.Listener
+}
+
+func (h httpu) ListenAndServe() error {
+	return h.Server.Serve(h.l)
+}
+
+type listenAndServe interface {
+	ListenAndServe() error
+}
+
+type listen interface {
+	Listen() error
+}
+
+type start interface {
+	Start()
+}
+
+func ready(do func() error, blockings ...interface{}) error {
+	for index := range blockings {
+		b := blockings[index]
+		err := timeout(func() error {
+			if x, ok := b.(listen); ok {
+				return x.Listen()
+			} else if x, ok := b.(listenAndServe); ok {
+				return x.ListenAndServe()
+			} else if x, ok := b.(start); ok {
+				x.Start()
+				return nil
+			}
+			return fmt.Errorf("unknown blocking interface for %T %#v", b, b)
+		}, time.Millisecond*10)
+		if err != nil {
+			return err
 		}
-	}()
+	}
+	return do()
+}
 
+func timeout(do func() error, d time.Duration) error {
+	rcv := make(chan error)
 	go func() {
-		proxy := goproxy.NewProxyHttpServer()
-		proxy.Verbose = true
-		proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^.+[.]me[.]com$"))).DoFunc(
-			func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-				pbk := strings.Split(r.URL.Host, ".")[0]
-				res, err := c.Find(opts.remote, pbk)
-				if err != nil {
-					return r, goproxy.NewResponse(r,
-						goproxy.ContentTypeText, http.StatusForbidden,
-						"failed: "+err.Error())
-				}
-				log.Println(res)
-				return r, nil
-			})
-		proxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^me[.]com$"))).DoFunc(
-			func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-				r.URL.Host = "127.0.0.1:" + opts.ws
-				return r, nil
-			})
-		log.Fatal(http.ListenAndServe("127.0.0.1:"+opts.proxy, proxy))
+		rcv <- do()
 	}()
-
-	go func() {
-		cmd := exec.Command("chromium-browser", "--proxy-server=127.0.0.1:"+opts.proxy, "me.com")
-		if err := cmd.Start(); err != nil {
-			log.Fatal(err)
+	select {
+	case err := <-rcv:
+		close(rcv)
+		if err != nil {
+			return err
 		}
-		cmd.Process.Release()
-	}()
-
-	<-make(chan bool)
+	case <-time.After(d):
+	}
+	return nil
 }

@@ -3,36 +3,50 @@ package client
 import (
 	"log"
 	"time"
+
+	"github.com/mh-cbon/rendez-vous/identity"
 )
 
 //Registration happens at regular time intervals
 type Registration struct {
 	i      time.Duration
 	done   chan bool
-	client Client
+	client *Client
+	remote string
+	id     identity.Identity
 }
 
 // NewRegistration creates a registration for given time interval using given client
-func NewRegistration(interval time.Duration, client Client) Registration {
-	return Registration{interval, make(chan bool), client}
+func NewRegistration(interval time.Duration, client *Client) *Registration {
+	return &Registration{i: interval, done: make(chan bool), client: client}
+}
+
+// Config the registration
+func (r *Registration) Config(remote string, id identity.Identity) {
+	r.remote = remote
+	r.id = id
 }
 
 // Start the registration
-func (r Registration) Start(remote, pbk, sign, value string) {
-	go r.loop(remote, pbk, sign, value)
+func (r *Registration) Start() {
+	go r.loop()
 }
 
 // Stop the registration
-func (r Registration) Stop() {
+func (r *Registration) Stop() {
 	r.done <- true
 }
 
-func (r Registration) loop(remote, pbk, sign, value string) {
-	for ; ; <-time.After(r.i) {
-		_, err := r.client.Register(remote, pbk, sign, value)
-		if err != nil {
-			log.Println(err)
+func (r *Registration) loop() {
+	for {
+		select {
+		case <-r.done:
+			return
+		case <-time.After(r.i):
+			_, err := r.client.Register(r.remote, &r.id)
+			if err != nil {
+				log.Println(err)
+			}
 		}
-		// log.Println(res)
 	}
 }

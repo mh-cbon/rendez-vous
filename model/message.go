@@ -1,5 +1,9 @@
 package model
 
+import (
+	"net"
+)
+
 // Message of rendez-vous servers and clients.
 type Message struct {
 	// Type     string `json:"t,omitempty"` // type of the Message q or r (query or response)
@@ -12,14 +16,22 @@ type Message struct {
 	Response string `json:"r,omitempty"` // Value content of a response
 }
 
+// defines default response codes
+var (
+	OkCode = 200
+)
+
 // defines default verb
 var (
+	// central rendez-vous
 	Ping       = "ping"
 	Register   = "reg"
 	Unregister = "unreg"
 	Find       = "find"
 	Join       = "join"
 	Leave      = "leave"
+	// leaf node
+	Services = "svc"
 )
 
 // OkVerb returns true for a correct verb.
@@ -30,4 +42,26 @@ func OkVerb(v string) bool {
 		v == Find ||
 		v == Join ||
 		v == Leave
+}
+
+// Reply builds a reply message
+func Reply(remote net.Addr) *Message {
+	var m Message
+	m.Address = remote.String()
+	return &m
+}
+
+// ReplyError builds an error reply message
+func ReplyError(remote net.Addr, code int) *Message {
+	m := Reply(remote)
+	m.Code = code
+	return m
+}
+
+// ReplyOk builds an ok reply message
+func ReplyOk(remote net.Addr, data string) *Message {
+	m := Reply(remote)
+	m.Code = OkCode
+	m.Response = data
+	return m
 }

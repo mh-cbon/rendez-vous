@@ -35,7 +35,6 @@ func (u *UDP) Write(data []byte, remote net.Addr) (int, error) {
 
 // Listen invoke process when a new message income
 func (u *UDP) Listen(h Handler) error {
-
 	conn := u.conn
 	var b [0x10000]byte
 	for {
