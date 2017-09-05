@@ -123,6 +123,7 @@ type rendezVousClientCommand struct {
 	Pbk    string `long:"pbk" description:"An ed25519 prublic key - 32 len hex"`
 	Pvk    string `long:"pvk" description:"The ed25519 private key - 64 len hex"`
 	Value  string `long:"value" description:"The value to sign"`
+	Retry  int    `long:"retry" description:"retry count"`
 }
 
 func (opts *rendezVousClientCommand) Execute(args []string) error {
@@ -141,7 +142,7 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 		return err
 	}
 
-	srv := socket.FromConn(conn)
+	srv := socket.FromConn(conn).Handle(client.HandleQuery())
 	c := client.FromSocket(srv)
 
 	defer srv.Close()
@@ -193,7 +194,17 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 		} else if opts.Query == "ping" {
 			res, err := c.Ping(opts.Remote)
 			if err != nil {
-				return errors.WithMessage(err, opts.Query)
+				if opts.Retry > 0 {
+					for i := 0; i < opts.Retry; i++ {
+						res, err = c.Ping(opts.Remote)
+						if err == nil {
+							break
+						}
+					}
+				}
+				if err != nil {
+					return errors.WithMessage(err, opts.Query)
+				}
 			}
 			fmt.Printf("%#v\n", res)
 
@@ -234,7 +245,7 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 	}
 
 	pc := ln.(*utp.Socket)
-	srv := socket.FromConn(pc)
+	srv := socket.FromConn(pc).Handle(client.HandleQuery())
 	c := client.FromSocket(srv)
 
 	registration := client.NewRegistration(time.Second*30, c)
