@@ -26,13 +26,7 @@ func UDP(address string) (*net.UDPConn, error) {
 func UTPDialer(dialAddr string) *http.Transport {
 	return &http.Transport{
 		Dial: func(network, addr string) (net.Conn, error) {
-			s, err := utp.NewSocket("udp", ":8082")
-			if err != nil {
-				return nil, err
-			}
-			defer s.Close()
-			return s.DialTimeout(dialAddr, 0)
-			// return utp.Dial(dialAddr)
+			return utp.Dial(dialAddr)
 		},
 	}
 }
