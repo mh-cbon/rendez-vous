@@ -81,6 +81,7 @@ func (t *Tx) Query(data []byte, remote net.Addr, h ResponseHandler) error {
 	binary.LittleEndian.PutUint16(b, txID)
 	data = append(b, data...)
 	data = append([]byte("q"), data...)
+	logger.Infof("%-16v snd %-16v: %-6v %-4v %v", t.LocalAddr(), remote, txID, len(data), string(data[1+binary.MaxVarintLen16:]))
 	_, err := t.UDP.Write(data, remote)
 	//todo: handle _
 	return err
@@ -92,6 +93,7 @@ func (t *Tx) Reply(data []byte, remote net.Addr, txID uint16) error {
 	binary.LittleEndian.PutUint16(b, txID)
 	data = append(b, data...)
 	data = append([]byte("r"), data...)
+	logger.Infof("%-16v snd %-16v: %-6v %-4v %v", t.LocalAddr(), remote, txID, len(data), string(data[1+binary.MaxVarintLen16:]))
 	_, err := t.UDP.Write(data, remote)
 	//todo: handle _
 	return err
@@ -103,7 +105,7 @@ type TxHandler func(remote net.Addr, data []byte, reply ResponseWriter) error
 // ResponseWriter writes response
 type ResponseWriter func(data []byte) error
 
-// ResponseHandler respond to a query
+// ResponseHandler handles  query's response
 type ResponseHandler func(data []byte, timedout bool) error
 
 // Listen ...
@@ -119,6 +121,7 @@ func (t *Tx) Listen(queryHandler TxHandler) error {
 		txID := binary.LittleEndian.Uint16(data[:binary.MaxVarintLen16])
 		data = data[binary.MaxVarintLen16:]
 		if kind == "q" {
+			logger.Infof("%-16v rcv %-16v: %-6v %-4v %v", t.LocalAddr(), remote, txID, len(data)+1+binary.MaxVarintLen16, string(data))
 			if queryHandler == nil {
 				return nil
 			}
@@ -128,6 +131,7 @@ func (t *Tx) Listen(queryHandler TxHandler) error {
 
 		} else if kind == "r" {
 			t.l.Lock()
+			logger.Infof("%-16v rcv %-16v: %-6v %-4v %v", t.LocalAddr(), remote, txID, len(data)+1+binary.MaxVarintLen16, string(data))
 			if handler, ok := t.transactions[txID]; ok {
 				delete(t.transactions, txID)
 				t.l.Unlock()

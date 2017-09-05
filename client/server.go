@@ -1,40 +1,28 @@
 package client
 
 import (
-	"encoding/json"
 	"net"
 
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/socket"
-	"github.com/pkg/errors"
 )
 
-//handleQuery ...
-func (c *Client) handleQuery(remote net.Addr, data []byte, writer socket.ResponseWriter) error {
+//HandleQuery handles p2p communication.
+func HandleQuery() socket.TxHandler {
+	return model.ProtoHandler(func(remote net.Addr, v model.Message, writer model.MessageResponseWriter) error {
 
-	var v model.Message
-	err := json.Unmarshal(data, &v)
-	if err != nil {
-		return errors.WithMessage(err, "json unmarshal")
-	}
+		var res *model.Message
 
-	logger.Info(remote.String(), "<-", v)
+		switch v.Query {
 
-	var res *model.Message
+		case model.Ping:
+			res = model.ReplyOk(remote, "")
 
-	switch v.Query {
+		case model.Services:
+			res = model.ReplyOk(remote, "")
 
-	case model.Services:
-		res = model.ReplyOk(remote, "")
-
-	}
-
-	if res != nil {
-		b, err := json.Marshal(*res)
-		if err != nil {
-			return errors.WithMessage(err, "json marshal")
 		}
-		return writer(b)
-	}
-	return nil
+
+		return writer(*res)
+	})
 }

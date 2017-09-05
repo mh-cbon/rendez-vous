@@ -125,6 +125,31 @@ func makeCmd(b string, args ...string) *exec.Cmd {
 	return cmd
 }
 
+func runRendezVous(port string) (*exec.Cmd, error) {
+	cmd := makeCmd("./t", "serve", "-l", port)
+	return cmd, timeout(cmd.Run, time.Second)
+}
+
+func runPing(remote string) error {
+	cmd := makeCmd("./t", "client", "-q", "ping", "-r", remote)
+	return cmd.Run()
+}
+
+func runWebsite(remote, listen, local, pvk string) (*exec.Cmd, error) {
+	cmd := makeCmd("./t", "website", "-r", remote, "-l", listen, "--local", local, "--pvk", pvk, "--dir", "demows")
+	return cmd, timeout(cmd.Run, time.Second)
+}
+
+func runBrowser(remote, listen, proxy, ws string) (*exec.Cmd, error) {
+	cmd := makeCmd("./t", "browser", "-r", remote, "-l", listen, "--ws", ws, "--proxy", proxy, "--headless")
+	return cmd, timeout(cmd.Run, time.Second)
+}
+
+func runHttpGet(url string) error {
+	cmd := makeCmd("./t", "http", "--url", url)
+	return cmd.Run()
+}
+
 func timeout(do func() error, d time.Duration) error {
 	rcv := make(chan error)
 	go func() {
@@ -139,29 +164,4 @@ func timeout(do func() error, d time.Duration) error {
 	case <-time.After(d):
 	}
 	return nil
-}
-
-func runRendezVous(port string) (*exec.Cmd, error) {
-	cmd := makeCmd("./t", "serve", "-listen", port)
-	return cmd, timeout(cmd.Run, time.Second)
-}
-
-func runPing(remote string) error {
-	cmd := makeCmd("./t", "client", "-query", "ping", "-remote", remote)
-	return cmd.Run()
-}
-
-func runWebsite(remote, listen, local, pvk string) (*exec.Cmd, error) {
-	cmd := makeCmd("./t", "website", "-remote", remote, "-listen", listen, "-local", local, "-pvk", pvk, "-static", "demows")
-	return cmd, timeout(cmd.Run, time.Second)
-}
-
-func runBrowser(remote, listen, proxy, ws string) (*exec.Cmd, error) {
-	cmd := makeCmd("./t", "browser", "-remote", remote, "-listen", listen, "-ws", ws, "-proxy", proxy, "-headless")
-	return cmd, timeout(cmd.Run, time.Second)
-}
-
-func runHttpGet(url string) error {
-	cmd := makeCmd("./t", "http", "-url", url)
-	return cmd.Run()
 }

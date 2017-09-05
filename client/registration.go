@@ -28,13 +28,15 @@ func (r *Registration) Config(remote string, id identity.Identity) {
 }
 
 // Start the registration
-func (r *Registration) Start() {
+func (r *Registration) Start() error {
 	go r.loop()
+	return nil
 }
 
 // Stop the registration
-func (r *Registration) Stop() {
+func (r *Registration) Stop() error {
 	r.done <- true
+	return nil
 }
 
 func (r *Registration) loop() {

@@ -1,8 +1,9 @@
+// Package client implements a client to query a rendez-vous server.
+// It also provides a client-server implementation for p2p communication.
 package client
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"net"
 
 	logging "github.com/op/go-logging"
@@ -17,17 +18,12 @@ var logger = logging.MustGetLogger("rendez-vous")
 
 // FromSocket ...
 func FromSocket(s socket.Socket) *Client {
-	return &Client{s}
+	return &Client{model.ProtoClient{Socket: s}}
 }
 
 // Client to speak with a rendez-vous server
 type Client struct {
-	s socket.Socket
-}
-
-//Listen ...
-func (c *Client) Listen() error {
-	return c.s.Listen(c.handleQuery)
+	s model.MessageQuerier
 }
 
 func (c *Client) query(remote string, q model.Message) (model.Message, error) {
@@ -36,17 +32,13 @@ func (c *Client) query(remote string, q model.Message) (model.Message, error) {
 	if err != nil {
 		return ret, err
 	}
-	data, err := json.Marshal(q)
-	if err != nil {
-		return ret, errors.WithMessage(err, "query marshal")
-	}
 	w := make(chan error)
-	queryErr := c.s.Query(data, addr, func(data []byte, timedout bool) error {
+	queryErr := c.s.Query(q, addr, func(res model.Message, timedout bool) error {
 		var replyErr error
 		if timedout {
 			replyErr = errors.New("query has timedout")
-		} else if replyErr = json.Unmarshal(data, &ret); replyErr != nil {
-			replyErr = errors.WithMessage(replyErr, "response unmarshal")
+		} else {
+			ret = res
 		}
 		w <- replyErr
 		return replyErr

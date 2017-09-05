@@ -20,9 +20,15 @@ func (u *UDP) Close() error {
 	return u.conn.Close()
 }
 
-//Conn of the underlying
+//Conn underlying
 func (u *UDP) Conn() net.PacketConn {
+	u.conn.LocalAddr()
 	return u.conn
+}
+
+//LocalAddr of the underlying conn
+func (u *UDP) LocalAddr() net.Addr {
+	return u.conn.LocalAddr()
 }
 
 // Handler handle incoming messages

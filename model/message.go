@@ -4,16 +4,24 @@ import (
 	"net"
 )
 
+// dontgo:generate protoc --go_out=. *.proto
+
 // Message of rendez-vous servers and clients.
 type Message struct {
-	// Type     string `json:"t,omitempty"` // type of the Message q or r (query or response)
-	Query    string `json:"q,omitempty"` // Query value of the message
-	Code     int    `json:"c,omitempty"` // Code of the response
-	Pbk      []byte `json:"p,omitempty"` // ed25519 Public key (raw string)
-	Sign     []byte `json:"s,omitempty"` // Sign of Pbk(v) (raw string)
-	Value    string `json:"v,omitempty"` // Value to sign
-	Address  string `json:"a,omitempty"` // Address of the querier sent in a response
-	Response string `json:"r,omitempty"` // Value content of a response
+	// Query value of the message
+	Query string `json:"q,omitempty" bencode:"q,omitempty" protobuf:"bytes,1,opt,name=query"`
+	// Code of the response
+	Code int32 `json:"c,omitempty" bencode:"c,omitempty" protobuf:"varint,2,opt,name=code"`
+	// ed25519 Public key (raw string)
+	Pbk []byte `json:"p,omitempty" bencode:"p,omitempty" protobuf:"bytes,3,opt,name=pbk"`
+	// Sign of Pbk(v) (raw string)
+	Sign []byte `json:"s,omitempty" bencode:"s,omitempty" protobuf:"bytes,4,opt,name=sign"`
+	// Value to sign
+	Value string `json:"v,omitempty" bencode:"v,omitempty" protobuf:"bytes,5,opt,name=value"`
+	// Address of the querier sent in a response
+	Address string `json:"a,omitempty" bencode:"a,omitempty" protobuf:"bytes,6,opt,name=address"`
+	// Value content of a response
+	Response string `json:"r,omitempty" bencode:"r,omitempty" protobuf:"bytes,7,opt,name=response"`
 }
 
 // defines default response codes
@@ -32,6 +40,10 @@ var (
 	Leave      = "leave"
 	// leaf node
 	Services = "svc"
+	//
+	Verbs = []string{
+		Ping, Register, Unregister, Find, Join, Leave, Services,
+	}
 )
 
 // OkVerb returns true for a correct verb.
@@ -54,14 +66,13 @@ func Reply(remote net.Addr) *Message {
 // ReplyError builds an error reply message
 func ReplyError(remote net.Addr, code int) *Message {
 	m := Reply(remote)
-	m.Code = code
+	m.Code = int32(code)
 	return m
 }
 
 // ReplyOk builds an ok reply message
 func ReplyOk(remote net.Addr, data string) *Message {
-	m := Reply(remote)
-	m.Code = OkCode
+	m := ReplyError(remote, OkCode)
 	m.Response = data
 	return m
 }

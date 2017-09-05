@@ -1,0 +1,12 @@
+syntax = "proto3";
+package model;
+
+message Message {
+  string query = 1;
+  int32 code = 2;
+  bytes pbk = 3;
+  bytes sign = 4;
+  string value = 5;
+  string address = 6;
+  string response = 7;
+}

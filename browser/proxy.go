@@ -2,15 +2,14 @@ package browser
 
 import (
 	"log"
-	"net"
 	"net/http"
 	"regexp"
 	"strings"
 
-	"github.com/anacrolix/utp"
 	"github.com/elazarl/goproxy"
 	"github.com/mh-cbon/rendez-vous/client"
 	"github.com/mh-cbon/rendez-vous/identity"
+	"github.com/mh-cbon/rendez-vous/utils"
 )
 
 // MakeProxyForBrowser prepares a proxy to handle me.com requests
@@ -42,11 +41,7 @@ func MakeProxyForBrowser(remote string, wsAddr string, c *client.Client) http.Ha
 			log.Println(peer)
 
 			httpClient := http.Client{
-				Transport: &http.Transport{
-					Dial: func(network, addr string) (net.Conn, error) {
-						return utp.Dial(peer.Response)
-					},
-				},
+				Transport: utils.UTPDialer(peer.Response),
 			}
 
 			r.URL.Host = peer.Response
