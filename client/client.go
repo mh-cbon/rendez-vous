@@ -18,7 +18,7 @@ var logger = logging.MustGetLogger("rendez-vous")
 
 // FromSocket ...
 func FromSocket(s socket.Socket) *Client {
-	return &Client{model.ProtoClient{Socket: s}}
+	return &Client{model.JSONClient{Socket: s}}
 }
 
 // Client to speak with a rendez-vous server

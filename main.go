@@ -211,8 +211,8 @@ type rendezVousWebsiteCommand struct {
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Local  string `long:"local" description:"The local port of the website" default:"9005"`
 	Dir    string `long:"dir" description:"The directory of the me.com website" default:"demows"`
-	Pvk    string `long:"pvk" description:"The ed25519 private key - 64 len hex"`
-	Value  string `long:"value" description:"The value to sign"`
+	Pvk    string `long:"pvk" description:"The ed25519 private key - 64 len hex - auto generated if empty"`
+	Value  string `long:"value" description:"The value to sign" default:"website"`
 }
 
 func (opts *rendezVousWebsiteCommand) Execute(args []string) error {

@@ -9,7 +9,7 @@ import (
 
 //HandleQuery handles p2p communication.
 func HandleQuery() socket.TxHandler {
-	return model.ProtoHandler(func(remote net.Addr, v model.Message, writer model.MessageResponseWriter) error {
+	return model.JSONHandler(func(remote net.Addr, v model.Message, writer model.MessageResponseWriter) error {
 
 		var res *model.Message
 

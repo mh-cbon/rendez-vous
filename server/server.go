@@ -30,7 +30,7 @@ func HandleQuery(registrations *store.TSRegistrations) socket.TxHandler {
 	if registrations == nil {
 		registrations = store.New(nil)
 	}
-	return model.ProtoHandler(func(remote net.Addr, v model.Message, writer model.MessageResponseWriter) error {
+	return model.JSONHandler(func(remote net.Addr, v model.Message, writer model.MessageResponseWriter) error {
 		var res *model.Message
 
 		switch v.Query {
