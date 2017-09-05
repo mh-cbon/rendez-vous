@@ -39,16 +39,21 @@ func (r *Registration) Stop() error {
 	return nil
 }
 
+func (r *Registration) register() {
+	_, err := r.client.Register(r.remote, &r.id)
+	if err != nil {
+		log.Println(err)
+	}
+}
+
 func (r *Registration) loop() {
+	go r.register()
 	for {
 		select {
 		case <-r.done:
 			return
 		case <-time.After(r.i):
-			_, err := r.client.Register(r.remote, &r.id)
-			if err != nil {
-				log.Println(err)
-			}
+			go r.register()
 		}
 	}
 }

@@ -228,37 +228,35 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 		return err
 	}
 
+	id, err := identity.FromPvk(opts.Pvk, opts.Value)
+	if err != nil {
+		return err
+	}
+
 	pc := ln.(*utp.Socket)
 	srv := socket.FromConn(pc)
 	c := client.FromSocket(srv)
+
+	registration := client.NewRegistration(time.Second*30, c)
+	registration.Config(opts.Remote, *id)
 
 	handler := http.FileServer(http.Dir(opts.Dir))
 	public := utils.ServeHTTPFromListener(ln, httpServer(handler, "")) //todo: replace with a transparent proxy, so the website can live into another process
 	local := httpServer(handler, "127.0.0.1:"+opts.Local)
 
 	done := make(chan error)
-	go handleSignal(done, srv.Close, public.Close, local.Close)
+	go handleSignal(done, registration.Stop, srv.Close, public.Close, local.Close)
 
 	readyErr := ready(func() error {
 		log.Println("Public Website listening on ", ln.Addr())
 		log.Println("Local Website listening on ", local.Addr)
 
-		id, err := identity.FromPvk(opts.Pvk, opts.Value)
-		if err != nil {
-			return err
-		}
 		fmt.Println("pvk=", id.Pvk)
 		fmt.Println("pbk=", id.Pbk)
 		fmt.Println("sig=", id.Sign)
 
-		res, err := c.Register(opts.Remote, id)
-		if err != nil {
-			return err
-		}
-
-		log.Println("registration ", res)
-		return err
-	}, srv.ListenAndServe, public.ListenAndServe, local.ListenAndServe)
+		return nil
+	}, srv.ListenAndServe, registration.Start, public.ListenAndServe, local.ListenAndServe)
 	if readyErr != nil {
 		return readyErr
 	}
@@ -300,8 +298,6 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 	srv := socket.FromConn(pc)
 	c := client.FromSocket(srv)
 
-	registration := client.NewRegistration(time.Second*5, c)
-
 	wsAddr := "127.0.0.1:" + opts.Ws
 	wsHandler := browser.MakeWebsite(opts.Dir)
 	gateway := httpServer(wsHandler, wsAddr)
@@ -310,7 +306,7 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 	proxy := httpServer(browserProxy, "127.0.0.1:"+opts.Proxy)
 
 	done := make(chan error)
-	go handleSignal(done, srv.Close, proxy.Close, gateway.Close, registration.Stop)
+	go handleSignal(done, srv.Close, proxy.Close, gateway.Close)
 
 	readyErr := ready(func() error {
 		log.Println("me.com server listening on", wsAddr)
@@ -324,7 +320,7 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 		}
 
 		return nil
-	}, srv.ListenAndServe, registration.Start, gateway.ListenAndServe, proxy.ListenAndServe)
+	}, srv.ListenAndServe, gateway.ListenAndServe, proxy.ListenAndServe)
 	if readyErr != nil {
 		return readyErr
 	}
