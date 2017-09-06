@@ -8,19 +8,17 @@ import (
 
 type Knock struct {
 	id     string
-	remote string
 	create time.Time
 	done   chan string
 }
 
 type ResolveHandler func(remote string)
 
-func NewKnock(remote string, id string) Knock {
+func NewKnock(id string) Knock {
 	if id == "" {
 		id = "random"
 	}
 	return Knock{
-		remote: remote,
 		id:     id, //todo: random token
 		create: time.Now(),
 		done:   make(chan string),
@@ -35,12 +33,12 @@ func (k Knock) Resolve(remote string) bool {
 	return true
 }
 
-func (k Knock) Run(c *Client) (remote string, err error) {
+func (k Knock) Run(remote string, c *Client) (string, error) {
 	x := make(chan error)
 	f := make(chan bool)
 	go func() {
 		for i := 0; i < 5; i++ {
-			c.Knock(k.remote, k.id)
+			c.Knock(remote, k.id)
 			select {
 			case <-f:
 				return
@@ -59,9 +57,9 @@ func (k Knock) Run(c *Client) (remote string, err error) {
 	// return "", nil
 }
 
-func (k Knock) RunDo(c *Client) {
+func (k Knock) RunDo(remote string, c *Client) {
 	for i := 0; i < 5; i++ {
-		_, err := c.Knock(k.remote, k.id)
+		_, err := c.Knock(remote, k.id)
 		if err == nil {
 			continue
 		}
@@ -79,8 +77,8 @@ func NewPendingKnocks() *PendingKnocks {
 	}
 }
 
-func (p *PendingKnocks) Add(remote string, id string) Knock {
-	k := NewKnock(remote, id)
+func (p *PendingKnocks) Add(id string) Knock {
+	k := NewKnock(id)
 	p.knocks[k.id] = k
 	return k
 }
@@ -114,10 +112,10 @@ func NewPendingKnocksTS(store *PendingKnocks) *PendingKnocksTS {
 	}
 }
 
-func (p *PendingKnocksTS) Add(remote string, id string) Knock {
+func (p *PendingKnocksTS) Add(id string) Knock {
 	p.l.Lock()
 	defer p.l.Unlock()
-	return p.store.Add(remote, id)
+	return p.store.Add(id)
 }
 
 func (p *PendingKnocksTS) Rm(k Knock) bool {

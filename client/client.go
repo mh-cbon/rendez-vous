@@ -64,16 +64,16 @@ func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity) (string, e
 	if err != nil {
 		return "", err
 	}
-	knock := c.knocks.Add(remote, "")
+	knock := c.knocks.Add("")
 	defer c.knocks.Rm(knock)
 	m := model.Message{
 		Query: model.ReqKnock,
 		Pbk:   bPbk,
 		Data:  knock.id,
 	}
-	_, err2 := c.query(remote, m)
+	f, err2 := c.query(remote, m)
 	if err2 == nil {
-		return knock.Run(c)
+		return knock.Run(f.Data, c)
 	}
 	return "", err2
 }

@@ -23,7 +23,7 @@ func HandleQuery(c *Client) socket.TxHandler {
 		case model.DoKnock:
 			addrToKnock := v.Data
 			knockToken := v.Value
-			go NewKnock(addrToKnock, knockToken).RunDo(c)
+			go NewKnock(knockToken).RunDo(addrToKnock, c)
 
 		case model.Knock:
 			if c.knocks.Resolve(remote.String(), v.Data) {
