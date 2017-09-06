@@ -20,6 +20,8 @@ var (
 	invalidSign  = 304
 	wrongQuery   = 305
 	wrongPbk     = 306
+	missingData  = 307
+	wrongData    = 308
 
 	notFound = 404
 )
@@ -39,17 +41,23 @@ func HandleQuery(c *client.Client, registrations *store.TSRegistrations) socket.
 		case model.Ping:
 			res = model.ReplyOk(remote, "")
 
-		case model.Knock:
+		case model.ReqKnock:
 			if len(v.Pbk) == 0 {
 				res = model.ReplyError(remote, missingPbk)
 
 			} else if len(v.Pbk) != 32 {
 				res = model.ReplyError(remote, wrongPbk)
 
+			} else if len(v.Data) == 0 {
+				res = model.ReplyError(remote, missingData)
+
+			} else if len(v.Data) > 100 {
+				res = model.ReplyError(remote, wrongData)
+
 			} else {
 				peer := registrations.GetByPbk(v.Pbk)
 				if peer != nil {
-					go c.DoKnock(peer.Address.String(), remote.String())
+					go c.DoKnock(peer.Address.String(), remote.String(), v.Data)
 					res = model.ReplyOk(remote, peer.Address.String())
 				}
 			}

@@ -106,9 +106,6 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 	c := client.FromSocket(srv)
 	srv.Handle(server.HandleQuery(c, nil))
 
-	done := make(chan error)
-	go handleSignal(done, srv.Close)
-
 	readyErr := ready(func() error {
 		log.Println("Listening...", ":"+opts.Listen)
 		return nil
@@ -116,6 +113,8 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 	if readyErr != nil {
 		return readyErr
 	}
+	done := make(chan error)
+	go handleSignal(done, srv.Close)
 	return <-done
 }
 
@@ -217,7 +216,6 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 		}
 		return nil
 	}, srv.ListenAndServe)
-
 	return readyErr
 }
 
@@ -260,9 +258,6 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 	public := utils.ServeHTTPFromListener(ln, httpServer(handler, "")) //todo: replace with a transparent proxy, so the website can live into another process
 	local := httpServer(handler, "127.0.0.1:"+opts.Local)
 
-	done := make(chan error)
-	go handleSignal(done, registration.Stop, srv.Close, public.Close, local.Close)
-
 	readyErr := ready(func() error {
 		log.Println("Public Website listening on ", ln.Addr())
 		log.Println("Local Website listening on ", local.Addr)
@@ -276,6 +271,8 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 	if readyErr != nil {
 		return readyErr
 	}
+	done := make(chan error)
+	go handleSignal(done, registration.Stop, srv.Close, public.Close, local.Close)
 	return <-done
 }
 
@@ -321,9 +318,6 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 	browserProxy := browser.MakeProxyForBrowser(opts.Remote, wsAddr, c)
 	proxy := httpServer(browserProxy, "127.0.0.1:"+opts.Proxy)
 
-	done := make(chan error)
-	go handleSignal(done, srv.Close, proxy.Close, gateway.Close)
-
 	readyErr := ready(func() error {
 		log.Println("me.com server listening on", wsAddr)
 
@@ -340,6 +334,8 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 	if readyErr != nil {
 		return readyErr
 	}
+	done := make(chan error)
+	go handleSignal(done, srv.Close, proxy.Close, gateway.Close)
 	return <-done
 }
 
@@ -373,9 +369,6 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	c := client.FromSocket(srv)
 	srv.Handle(client.HandleQuery(c))
 
-	done := make(chan error)
-	go handleSignal(done, srv.Close)
-
 	readyErr := ready(func() error {
 
 		u, err := url.Parse(opts.URL)
@@ -388,20 +381,9 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 			if err2 != nil {
 				return fmt.Errorf("knock failure: %v", err2.Error())
 			}
-			found, err2 := c.Knock(opts.Remote, id)
+			found, err2 := c.ReqKnock(opts.Remote, id)
 			log.Println("found ", found)
 			log.Println("err2 ", err2)
-			if err2 == nil {
-				for i := 0; i < 5; i++ {
-					log.Println("Ping ", i)
-					_, err2 = c.Ping(found.Data)
-					log.Println("Ping ", err2)
-					if err2 == nil {
-						break
-					}
-					<-time.After(time.Second)
-				}
-			}
 			if err2 != nil {
 				return fmt.Errorf("knock failure: %v", err2.Error())
 			}
@@ -433,6 +415,8 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	if readyErr != nil {
 		return readyErr
 	}
+	done := make(chan error)
+	go handleSignal(done, srv.Close)
 	return <-done
 }
 
@@ -449,6 +433,7 @@ func handleSignal(done chan error, do ...func() error) {
 	if done != nil {
 		done <- err
 	}
+	os.Exit(0)
 }
 
 func httpServer(r http.Handler, addr string) *http.Server {

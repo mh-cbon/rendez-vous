@@ -18,6 +18,7 @@ func Test1(t *testing.T) {
 	if err := build(); err != nil {
 		t.Fatal(err)
 	}
+
 	t.Run("1", func(t *testing.T) {
 		rv, err := runRendezVous("8070")
 		if err != nil {
@@ -30,6 +31,7 @@ func Test1(t *testing.T) {
 			t.Error(err)
 		}
 	})
+
 	t.Run("2", func(t *testing.T) {
 		rv, err := runRendezVous("8090")
 		if err != nil {

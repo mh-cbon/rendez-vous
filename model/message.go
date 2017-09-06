@@ -38,8 +38,9 @@ var (
 	Find       = "find"
 	Join       = "join"
 	Leave      = "leave"
-	Knock      = "knock"
+	ReqKnock   = "reqknock"
 	DoKnock    = "doknock"
+	Knock      = "knock"
 	// leaf node
 	Services = "svc"
 	//

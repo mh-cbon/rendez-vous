@@ -1,7 +1,7 @@
 package client
 
 import (
-	"fmt"
+	"log"
 	"net"
 
 	"github.com/mh-cbon/rendez-vous/model"
@@ -22,20 +22,21 @@ func HandleQuery(c *Client) socket.TxHandler {
 			res = model.ReplyOk(remote, "")
 
 		case model.DoKnock:
-			_, err := c.Ping(v.Data)
-			if err != nil {
-				for i := 0; i < 5; i++ {
-					_, err = c.Ping(v.Data)
-					if err == nil {
-						break
-					}
-				}
-			}
-			if err != nil {
-				return fmt.Errorf("knock failure: %v", err.Error())
-			}
+			addrToKnock := v.Data
+			knockToken := v.Value
+
+			knock := c.knocks.Add(addrToKnock, knockToken)
+			okAddr, err3 := knock.Run(c)
+			log.Println(okAddr, err3)
+			c.knocks.Rm(knock)
+
+		case model.Knock:
+			c.knocks.Resolve(remote.String(), v.Data)
 		}
 
-		return writer(remote, *res)
+		if res != nil {
+			return writer(remote, *res)
+		}
+		return nil
 	})
 }

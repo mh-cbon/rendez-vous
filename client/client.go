@@ -4,6 +4,7 @@ package client
 
 import (
 	"encoding/hex"
+	"log"
 	"net"
 
 	logging "github.com/op/go-logging"
@@ -18,12 +19,13 @@ var logger = logging.MustGetLogger("rendez-vous")
 
 // FromSocket ...
 func FromSocket(s socket.Socket) *Client {
-	return &Client{model.JSONClient{Socket: s}}
+	return &Client{s: model.JSONClient{Socket: s}, knocks: NewPendingKnocksTS(nil)}
 }
 
 // Client to speak with a rendez-vous server
 type Client struct {
-	s model.MessageQuerier
+	s      model.MessageQuerier
+	knocks *PendingKnocksTS
 }
 
 func (c *Client) query(remote string, q model.Message) (model.Message, error) {
@@ -57,24 +59,42 @@ func (c *Client) Ping(remote string) (model.Message, error) {
 	return c.query(remote, m)
 }
 
-// Knock help
-func (c *Client) Knock(remote string, id *identity.PublicIdentity) (model.Message, error) {
+// ReqKnock help
+func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity) (model.Message, error) {
 	bPbk, err := hex.DecodeString(id.Pbk)
 	if err != nil {
 		return model.Message{}, err
 	}
+	knock := c.knocks.Add(remote, "")
+	defer c.knocks.Rm(knock)
+	m := model.Message{
+		Query: model.ReqKnock,
+		Pbk:   bPbk,
+		Data:  knock.id,
+	}
+	found, err2 := c.query(remote, m)
+	if err2 == nil {
+		okAddr, err3 := knock.Run(c)
+		log.Println(okAddr, err3)
+	}
+	return found, err2
+}
+
+// Knock send
+func (c *Client) Knock(remote string, knockToken string) (model.Message, error) {
 	m := model.Message{
 		Query: model.Knock,
-		Pbk:   bPbk,
+		Value: knockToken,
 	}
 	return c.query(remote, m)
 }
 
 // DoKnock help
-func (c *Client) DoKnock(remote string, knockedAddress string) (model.Message, error) {
+func (c *Client) DoKnock(remote string, knockAddress string, knockToken string) (model.Message, error) {
 	m := model.Message{
 		Query: model.DoKnock,
-		Data:  knockedAddress,
+		Data:  knockAddress,
+		Value: knockToken,
 	}
 	return c.query(remote, m)
 }
