@@ -57,6 +57,28 @@ func (c *Client) Ping(remote string) (model.Message, error) {
 	return c.query(remote, m)
 }
 
+// Knock help
+func (c *Client) Knock(remote string, id *identity.PublicIdentity) (model.Message, error) {
+	bPbk, err := hex.DecodeString(id.Pbk)
+	if err != nil {
+		return model.Message{}, err
+	}
+	m := model.Message{
+		Query: model.Knock,
+		Pbk:   bPbk,
+	}
+	return c.query(remote, m)
+}
+
+// DoKnock help
+func (c *Client) DoKnock(remote string, knockedAddress string) (model.Message, error) {
+	m := model.Message{
+		Query: model.DoKnock,
+		Data:  knockedAddress,
+	}
+	return c.query(remote, m)
+}
+
 // Find peer for given pbk
 func (c *Client) Find(remote string, id *identity.PublicIdentity) (model.Message, error) {
 	bPbk, err := hex.DecodeString(id.Pbk)

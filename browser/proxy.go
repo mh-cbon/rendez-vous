@@ -40,11 +40,10 @@ func MakeProxyForBrowser(remote string, wsAddr string, c *client.Client) http.Ha
 			}
 			log.Println(peer)
 
+			r.URL.Host = peer.Data
 			httpClient := http.Client{
-				Transport: utils.UTPDialer(peer.Response),
+				Transport: utils.UTPDialer(r.URL.Host),
 			}
-
-			r.URL.Host = peer.Response
 			res, err := httpClient.Get(r.URL.String())
 			if err != nil {
 				return r, goproxy.NewResponse(r,

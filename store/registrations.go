@@ -2,6 +2,7 @@ package store
 
 import (
 	"bytes"
+	"net"
 	"sync"
 	"time"
 )
@@ -13,13 +14,13 @@ type Registrations struct {
 
 // Peer is an address and a pbk
 type Peer struct {
-	Address string
+	Address net.Addr
 	Pbk     []byte
 	create  time.Time
 }
 
 // Add a peer (remote+pbk)
-func (s *Registrations) Add(address string, pbk []byte) {
+func (s *Registrations) Add(address net.Addr, pbk []byte) {
 	p := Peer{address, make([]byte, len(pbk)), time.Now()}
 	copy(p.Pbk, pbk)
 	s.Peers = append(s.Peers, p)
@@ -28,7 +29,7 @@ func (s *Registrations) Add(address string, pbk []byte) {
 // GetByAddr find a peer by its addresss
 func (s *Registrations) GetByAddr(address string) *Peer {
 	for _, p := range s.Peers {
-		if p.Address == address {
+		if p.Address.String() == address {
 			return &p
 		}
 	}
@@ -49,7 +50,7 @@ func (s *Registrations) GetByPbk(pbk []byte) *Peer {
 func (s *Registrations) RemoveByAddr(address string) bool {
 	ok := false
 	for i, p := range s.Peers {
-		if p.Address == address {
+		if p.Address.String() == address {
 			s.Peers = append(s.Peers[:i], s.Peers[i+1:]...)
 			ok = true
 		}
@@ -72,7 +73,7 @@ func (s *Registrations) RemoveByPbk(pbk []byte) bool {
 // HasAddr return true if a peer has given address
 func (s *Registrations) HasAddr(address string) bool {
 	for _, p := range s.Peers {
-		if p.Address == address {
+		if p.Address.String() == address {
 			return true
 		}
 	}
@@ -104,7 +105,7 @@ func New(s *Registrations) *TSRegistrations {
 }
 
 // Add a peer (remote+pbk)
-func (s *TSRegistrations) Add(address string, pbk []byte) {
+func (s *TSRegistrations) Add(address net.Addr, pbk []byte) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.store.Add(address, pbk)

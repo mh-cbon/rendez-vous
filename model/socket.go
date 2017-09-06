@@ -11,7 +11,7 @@ import (
 )
 
 // MessageResponseWriter writes response
-type MessageResponseWriter func(m Message) error
+type MessageResponseWriter func(remote net.Addr, m Message) error
 
 // MessageResponseHandler handles  query's response
 type MessageResponseHandler func(data Message, timedout bool) error
@@ -34,7 +34,7 @@ func JSONHandler(h MessageQueryHandler) socket.TxHandler {
 		if err != nil {
 			return errors.WithMessage(err, "json unmarshal")
 		}
-		w := func(res Message) error {
+		w := func(remote net.Addr, res Message) error {
 			b, err := json.Marshal(res)
 			if err != nil {
 				return errors.WithMessage(err, "json marshal")
@@ -82,7 +82,7 @@ func BencodeHandler(h MessageQueryHandler) socket.TxHandler {
 		if err != nil {
 			return errors.WithMessage(err, "bencode unmarshal")
 		}
-		w := func(res Message) error {
+		w := func(remote net.Addr, res Message) error {
 			b, err := bencode.Marshal(res)
 			if err != nil {
 				return errors.WithMessage(err, "bencode marshal")
@@ -130,7 +130,7 @@ func ProtoHandler(h MessageQueryHandler) socket.TxHandler {
 		if err != nil {
 			return errors.WithMessage(err, "proto unmarshal")
 		}
-		w := func(res Message) error {
+		w := func(remote net.Addr, res Message) error {
 			b, err := proto.Marshal(&res)
 			if err != nil {
 				return errors.WithMessage(err, "proto marshal")

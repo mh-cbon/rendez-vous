@@ -339,12 +339,58 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 }
 
 type rendezVousHTTPCommand struct {
-	URL string `short:"u" long:"url" description:"URL to execute"`
+	URL    string `short:"u" long:"url" description:"URL to execute"`
+	Listen string `short:"l" long:"listen" description:"UTP port to listen" default:"8082"`
+	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
+	Pbk    string `long:"pbk" description:"An ed25519 prublic key - 32 len hex"`
+	Value  string `long:"value" description:"The value to sign" default:"website"`
+	Knock  bool   `long:"knock" description:"Knock peer at first"`
 }
 
 func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	if opts.URL == "" {
 		return fmt.Errorf("-url argument is required")
+	}
+	if opts.Listen == "" {
+		return fmt.Errorf("--listen argument is required")
+	}
+	if opts.Remote == "" {
+		return fmt.Errorf("--remote argument is required")
+	}
+
+	ln, err := utp.Listen(":" + opts.Listen)
+	if err != nil {
+		return err
+	}
+
+	pc := ln.(*utp.Socket)
+	srv := socket.FromConn(pc)
+	c := client.FromSocket(srv)
+	srv.Handle(client.HandleQuery(c))
+
+	if opts.Knock {
+		id, err := identity.FromPbk(opts.Pbk, opts.Value)
+		if err != nil {
+			return fmt.Errorf("knock failure: %v", err.Error())
+		}
+		found, err := c.Find(opts.Remote, id)
+		if err != nil {
+			return fmt.Errorf("knock failure: %v", err.Error())
+		}
+		_, err = c.Knock(opts.Remote, id)
+		if err != nil {
+			for i := 0; i < 5; i++ {
+				_, err = c.Ping(found.Data)
+				if err == nil {
+					break
+				}
+				<-time.After(time.Second)
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("knock failure: %v", err.Error())
+		}
+
 	}
 
 	u, err := url.Parse(opts.URL)
@@ -353,7 +399,7 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	}
 
 	httpClient := http.Client{
-		Transport: utils.UTPDialer(u.Host),
+		Transport: pc.Dial(u.Host),
 	}
 	res, err := httpClient.Get(u.String())
 	if err != nil {

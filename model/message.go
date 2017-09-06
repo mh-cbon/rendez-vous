@@ -20,8 +20,8 @@ type Message struct {
 	Value string `json:"v,omitempty" bencode:"v,omitempty" protobuf:"bytes,5,opt,name=value"`
 	// Address of the querier sent in a response
 	Address string `json:"a,omitempty" bencode:"a,omitempty" protobuf:"bytes,6,opt,name=address"`
-	// Value content of a response
-	Response string `json:"r,omitempty" bencode:"r,omitempty" protobuf:"bytes,7,opt,name=response"`
+	// Data for query / response
+	Data string `json:"d,omitempty" bencode:"d,omitempty" protobuf:"bytes,7,opt,name=data"`
 }
 
 // defines default response codes
@@ -38,6 +38,8 @@ var (
 	Find       = "find"
 	Join       = "join"
 	Leave      = "leave"
+	Knock      = "knock"
+	DoKnock    = "doknock"
 	// leaf node
 	Services = "svc"
 	//
@@ -73,6 +75,6 @@ func ReplyError(remote net.Addr, code int) *Message {
 // ReplyOk builds an ok reply message
 func ReplyOk(remote net.Addr, data string) *Message {
 	m := ReplyError(remote, OkCode)
-	m.Response = data
+	m.Data = data
 	return m
 }

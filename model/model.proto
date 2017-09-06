@@ -8,5 +8,5 @@ message Message {
   bytes sign = 4;
   string value = 5;
   string address = 6;
-  string response = 7;
+  string data = 7;
 }

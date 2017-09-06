@@ -6,6 +6,7 @@ import (
 	"net"
 
 	"github.com/mh-cbon/dht/ed25519"
+	"github.com/mh-cbon/rendez-vous/client"
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/socket"
 	"github.com/mh-cbon/rendez-vous/store"
@@ -26,7 +27,7 @@ var (
 var logger = logging.MustGetLogger("rendez-vous")
 
 //HandleQuery ...
-func HandleQuery(registrations *store.TSRegistrations) socket.TxHandler {
+func HandleQuery(c *client.Client, registrations *store.TSRegistrations) socket.TxHandler {
 	if registrations == nil {
 		registrations = store.New(nil)
 	}
@@ -37,6 +38,21 @@ func HandleQuery(registrations *store.TSRegistrations) socket.TxHandler {
 
 		case model.Ping:
 			res = model.ReplyOk(remote, "")
+
+		case model.Knock:
+			if len(v.Pbk) == 0 {
+				res = model.ReplyError(remote, missingPbk)
+
+			} else if len(v.Pbk) != 32 {
+				res = model.ReplyError(remote, wrongPbk)
+
+			} else {
+				peer := registrations.GetByPbk(v.Pbk)
+				if peer != nil {
+					go c.DoKnock(peer.Address.String(), remote.String())
+					res = model.ReplyOk(remote, peer.Address.String())
+				}
+			}
 
 		case model.Register:
 			//todo: rendez-vous server should implement a write token
@@ -57,10 +73,9 @@ func HandleQuery(registrations *store.TSRegistrations) socket.TxHandler {
 				res = model.ReplyError(remote, invalidSign)
 
 			} else {
-				addr := remote.String() //is it a safe value ?
 				go func() {
-					registrations.RemoveByAddr(addr)
-					registrations.Add(addr, v.Pbk)
+					registrations.RemoveByAddr(remote.String())
+					registrations.Add(remote, v.Pbk)
 				}()
 				res = model.ReplyOk(remote, "")
 			}
@@ -81,7 +96,7 @@ func HandleQuery(registrations *store.TSRegistrations) socket.TxHandler {
 				res = model.ReplyError(remote, missingPbk)
 
 			} else if peer := registrations.GetByPbk(v.Pbk); peer != nil {
-				res = model.ReplyOk(remote, peer.Address)
+				res = model.ReplyOk(remote, peer.Address.String())
 
 			} else {
 				res = model.ReplyError(remote, notFound)
@@ -93,6 +108,6 @@ func HandleQuery(registrations *store.TSRegistrations) socket.TxHandler {
 			//todo: leave the swarm
 		}
 
-		return writer(*res)
+		return writer(remote, *res)
 	})
 }
