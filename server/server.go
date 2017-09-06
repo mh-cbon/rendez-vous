@@ -75,6 +75,7 @@ func HandleQuery(c *client.Client, registrations *store.TSRegistrations) socket.
 			} else {
 				go func() {
 					registrations.RemoveByAddr(remote.String())
+					registrations.RemoveByPbk(v.Pbk)
 					registrations.Add(remote, v.Pbk)
 				}()
 				res = model.ReplyOk(remote, "")

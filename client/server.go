@@ -9,9 +9,8 @@ import (
 )
 
 //HandleQuery handles p2p communication.
-func HandleQuery(client *Client) socket.TxHandler {
+func HandleQuery(c *Client) socket.TxHandler {
 	return model.JSONHandler(func(remote net.Addr, v model.Message, writer model.MessageResponseWriter) error {
-
 		var res *model.Message
 
 		switch v.Query {
@@ -23,10 +22,10 @@ func HandleQuery(client *Client) socket.TxHandler {
 			res = model.ReplyOk(remote, "")
 
 		case model.DoKnock:
-			_, err := client.Ping(res.Data)
+			_, err := c.Ping(v.Data)
 			if err != nil {
 				for i := 0; i < 5; i++ {
-					_, err = client.Ping(res.Data)
+					_, err = c.Ping(v.Data)
 					if err == nil {
 						break
 					}
