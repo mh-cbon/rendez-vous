@@ -4,7 +4,6 @@ package client
 
 import (
 	"encoding/hex"
-	"log"
 	"net"
 
 	logging "github.com/op/go-logging"
@@ -60,10 +59,10 @@ func (c *Client) Ping(remote string) (model.Message, error) {
 }
 
 // ReqKnock help
-func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity) (model.Message, error) {
+func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity) (string, error) {
 	bPbk, err := hex.DecodeString(id.Pbk)
 	if err != nil {
-		return model.Message{}, err
+		return "", err
 	}
 	knock := c.knocks.Add(remote, "")
 	defer c.knocks.Rm(knock)
@@ -72,12 +71,11 @@ func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity) (model.Mes
 		Pbk:   bPbk,
 		Data:  knock.id,
 	}
-	found, err2 := c.query(remote, m)
+	_, err2 := c.query(remote, m)
 	if err2 == nil {
-		okAddr, err3 := knock.Run(c)
-		log.Println(okAddr, err3)
+		return knock.Run(c)
 	}
-	return found, err2
+	return "", err2
 }
 
 // Knock send

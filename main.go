@@ -381,13 +381,13 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 			if err2 != nil {
 				return fmt.Errorf("knock failure: %v", err2.Error())
 			}
-			found, err2 := c.ReqKnock(opts.Remote, id)
-			log.Println("found ", found)
+			newRemote, err2 := c.ReqKnock(opts.Remote, id)
+			log.Println("found ", newRemote)
 			log.Println("err2 ", err2)
 			if err2 != nil {
 				return fmt.Errorf("knock failure: %v", err2.Error())
 			}
-			u.Host = found.Data
+			u.Host = newRemote
 		}
 
 		httpClient := http.Client{
