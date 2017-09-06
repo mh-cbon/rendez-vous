@@ -44,10 +44,10 @@ func (k Knock) Run(remote string, c *Client) (string, error) {
 			var wg sync.WaitGroup
 			for e := 0; e < 10; e++ {
 				wg.Add(1)
-				go func() {
-					c.Knock(inc(remote, e), k.id)
+				go func(d int) {
+					c.Knock(inc(remote, d), k.id)
 					wg.Done()
-				}()
+				}(e)
 			}
 			select {
 			case <-f:
@@ -74,11 +74,11 @@ func (k Knock) RunDo(remote string, c *Client) {
 		var wg sync.WaitGroup
 		for e := 0; e < 10; e++ {
 			wg.Add(1)
-			go func() {
-				_, err := c.Knock(remote, k.id)
+			go func(d int) {
+				_, err := c.Knock(inc(remote, d), k.id)
 				wg.Done()
 				w <- err
-			}()
+			}(e)
 		}
 		wg.Wait()
 		select {
