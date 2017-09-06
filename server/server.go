@@ -109,6 +109,9 @@ func HandleQuery(c *client.Client, registrations *store.TSRegistrations) socket.
 			//todo: leave the swarm
 		}
 
-		return writer(remote, *res)
+		if res != nil {
+			return writer(remote, *res)
+		}
+		return nil
 	})
 }
