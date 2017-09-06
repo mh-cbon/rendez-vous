@@ -3,6 +3,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"strings"
 	"sync"
@@ -48,7 +49,12 @@ func (k Knock) Run(remote string, c *Client) (string, error) {
 			// 	c.Knock(remote, k.id)
 			// 	wg.Done()
 			// }(e)
-			go c.Knock(remote, k.id)
+			go func() {
+				res, err := c.Knock(remote, k.id)
+				if err == nil {
+					go k.Resolve(res.Data)
+				}
+			}()
 			// }
 			select {
 			case <-f:
@@ -87,6 +93,9 @@ func (k Knock) RunDo(remote string, c *Client) {
 		}()
 		// wg.Wait()
 		select {
+		case res := <-k.done:
+			log.Println("knock ok ", res)
+			return
 		case err := <-w:
 			if err == nil {
 				return
