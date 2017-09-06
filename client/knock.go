@@ -2,6 +2,9 @@ package client
 
 import (
 	"errors"
+	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -38,7 +41,9 @@ func (k Knock) Run(remote string, c *Client) (string, error) {
 	f := make(chan bool)
 	go func() {
 		for i := 0; i < 5; i++ {
-			c.Knock(remote, k.id)
+			for e := 0; e < 10; e++ {
+				go c.Knock(inc(remote, e), k.id)
+			}
 			select {
 			case <-f:
 				return
@@ -58,13 +63,32 @@ func (k Knock) Run(remote string, c *Client) (string, error) {
 }
 
 func (k Knock) RunDo(remote string, c *Client) {
+	w := make(chan error)
 	for i := 0; i < 5; i++ {
-		_, err := c.Knock(remote, k.id)
-		if err == nil {
-			continue
+		var wg sync.WaitGroup
+		for e := 0; e < 10; e++ {
+			wg.Add(1)
+			go func() {
+				_, err := c.Knock(remote, k.id)
+				wg.Done()
+				w <- err
+			}()
 		}
-		<-time.After(time.Second)
+		wg.Wait()
+		select {
+		case err := <-w:
+			if err == nil {
+				return
+			}
+		case <-time.After(time.Second):
+		}
 	}
+}
+
+func inc(r string, d int) string {
+	rr := strings.Split(r, ":")
+	x, _ := strconv.Atoi(rr[1])
+	return fmt.Sprintf("%v:%v", rr[0], x+d)
 }
 
 type PendingKnocks struct {
