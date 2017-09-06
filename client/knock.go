@@ -52,7 +52,7 @@ func (k Knock) Run(remote string, c *Client) (string, error) {
 			go func() {
 				res, err := c.Knock(remote, k.id)
 				if err == nil {
-					go k.Resolve(res.Data)
+					go k.Resolve(res.Address)
 				}
 			}()
 			// }
