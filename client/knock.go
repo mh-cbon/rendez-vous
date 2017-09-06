@@ -41,19 +41,20 @@ func (k Knock) Run(remote string, c *Client) (string, error) {
 	f := make(chan bool)
 	go func() {
 		for i := 0; i < 5; i++ {
-			var wg sync.WaitGroup
-			for e := 0; e < 10; e++ {
-				wg.Add(1)
-				go func(d int) {
-					c.Knock(inc(remote, d), k.id)
-					wg.Done()
-				}(e)
-			}
+			// var wg sync.WaitGroup
+			// for e := 0; e < 10; e++ {
+			// wg.Add(1)
+			// go func(d int) {
+			// 	c.Knock(remote, k.id)
+			// 	wg.Done()
+			// }(e)
+			go c.Knock(remote, k.id)
+			// }
 			select {
 			case <-f:
 				return
 			case <-time.After(time.Second):
-				wg.Wait()
+				// wg.Wait()
 			}
 		}
 		x <- errors.New("knock timeout")
@@ -71,16 +72,20 @@ func (k Knock) Run(remote string, c *Client) (string, error) {
 func (k Knock) RunDo(remote string, c *Client) {
 	w := make(chan error)
 	for i := 0; i < 5; i++ {
-		var wg sync.WaitGroup
-		for e := 0; e < 10; e++ {
-			wg.Add(1)
-			go func(d int) {
-				_, err := c.Knock(inc(remote, d), k.id)
-				wg.Done()
-				w <- err
-			}(e)
-		}
-		wg.Wait()
+		// var wg sync.WaitGroup
+		// for e := 0; e < 10; e++ {
+		// wg.Add(1)
+		// go func(d int) {
+		// 	_, err := c.Knock(inc(remote, d), k.id)
+		// 	wg.Done()
+		// 	w <- err
+		// }(e)
+		// }
+		go func() {
+			_, err := c.Knock(remote, k.id)
+			w <- err
+		}()
+		// wg.Wait()
 		select {
 		case err := <-w:
 			if err == nil {
