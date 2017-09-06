@@ -384,9 +384,13 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 			return fmt.Errorf("knock failure: %v", err2.Error())
 		}
 		found, err2 := c.Knock(opts.Remote, id)
+		log.Println("found ", found)
+		log.Println("err2 ", err2)
 		if err2 == nil {
 			for i := 0; i < 5; i++ {
+				log.Println("Ping ", i)
 				_, err2 = c.Ping(found.Data)
+				log.Println("Ping ", err2)
 				if err2 == nil {
 					break
 				}
