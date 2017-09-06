@@ -1,7 +1,6 @@
 package client
 
 import (
-	"log"
 	"net"
 
 	"github.com/mh-cbon/rendez-vous/model"
@@ -24,14 +23,12 @@ func HandleQuery(c *Client) socket.TxHandler {
 		case model.DoKnock:
 			addrToKnock := v.Data
 			knockToken := v.Value
-
-			knock := c.knocks.Add(addrToKnock, knockToken)
-			okAddr, err3 := knock.Run(c)
-			log.Println(okAddr, err3)
-			c.knocks.Rm(knock)
+			go NewKnock(addrToKnock, knockToken).RunDo(c)
 
 		case model.Knock:
-			c.knocks.Resolve(remote.String(), v.Data)
+			if c.knocks.Resolve(remote.String(), v.Data) {
+				res = model.ReplyOk(remote, v.Data)
+			}
 		}
 
 		if res != nil {

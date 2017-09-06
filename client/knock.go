@@ -59,6 +59,16 @@ func (k Knock) Run(c *Client) (remote string, err error) {
 	// return "", nil
 }
 
+func (k Knock) RunDo(c *Client) {
+	for i := 0; i < 5; i++ {
+		_, err := c.Knock(k.remote, k.id)
+		if err == nil {
+			continue
+		}
+		<-time.After(time.Second)
+	}
+}
+
 type PendingKnocks struct {
 	knocks map[string]Knock
 }
