@@ -41,13 +41,19 @@ func (k Knock) Run(remote string, c *Client) (string, error) {
 	f := make(chan bool)
 	go func() {
 		for i := 0; i < 5; i++ {
+			var wg sync.WaitGroup
 			for e := 0; e < 10; e++ {
-				go c.Knock(inc(remote, e), k.id)
+				wg.Add(1)
+				go func() {
+					c.Knock(inc(remote, e), k.id)
+					wg.Done()
+				}()
 			}
 			select {
 			case <-f:
 				return
 			case <-time.After(time.Second):
+				wg.Wait()
 			}
 		}
 		x <- errors.New("knock timeout")
