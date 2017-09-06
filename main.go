@@ -373,57 +373,67 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	c := client.FromSocket(srv)
 	srv.Handle(client.HandleQuery(c))
 
-	u, err := url.Parse(opts.URL)
-	if err != nil {
-		return errors.WithMessage(err, "url parse")
-	}
+	done := make(chan error)
+	go handleSignal(done, srv.Close)
 
-	if opts.Knock {
-		id, err2 := identity.FromPbk(opts.Pbk, opts.Value)
-		if err2 != nil {
-			return fmt.Errorf("knock failure: %v", err2.Error())
+	readyErr := ready(func() error {
+
+		u, err := url.Parse(opts.URL)
+		if err != nil {
+			return errors.WithMessage(err, "url parse")
 		}
-		found, err2 := c.Knock(opts.Remote, id)
-		log.Println("found ", found)
-		log.Println("err2 ", err2)
-		if err2 == nil {
-			for i := 0; i < 5; i++ {
-				log.Println("Ping ", i)
-				_, err2 = c.Ping(found.Data)
-				log.Println("Ping ", err2)
-				if err2 == nil {
-					break
-				}
-				<-time.After(time.Second)
+
+		if opts.Knock {
+			id, err2 := identity.FromPbk(opts.Pbk, opts.Value)
+			if err2 != nil {
+				return fmt.Errorf("knock failure: %v", err2.Error())
 			}
-		}
-		if err2 != nil {
-			return fmt.Errorf("knock failure: %v", err2.Error())
-		}
-		u.Host = found.Data
-	}
-
-	httpClient := http.Client{
-		Transport: &http.Transport{
-			Dial: func(network, addr string) (net.Conn, error) {
-				dial, err2 := pc.Dial(u.Host)
-				if err2 != nil {
-					return nil, errors.WithMessage(err2, "dial")
+			found, err2 := c.Knock(opts.Remote, id)
+			log.Println("found ", found)
+			log.Println("err2 ", err2)
+			if err2 == nil {
+				for i := 0; i < 5; i++ {
+					log.Println("Ping ", i)
+					_, err2 = c.Ping(found.Data)
+					log.Println("Ping ", err2)
+					if err2 == nil {
+						break
+					}
+					<-time.After(time.Second)
 				}
-				return dial, nil
+			}
+			if err2 != nil {
+				return fmt.Errorf("knock failure: %v", err2.Error())
+			}
+			u.Host = found.Data
+		}
+
+		httpClient := http.Client{
+			Transport: &http.Transport{
+				Dial: func(network, addr string) (net.Conn, error) {
+					dial, err2 := pc.Dial(u.Host)
+					if err2 != nil {
+						return nil, errors.WithMessage(err2, "dial")
+					}
+					return dial, nil
+				},
 			},
-		},
+		}
+		res, err := httpClient.Get(u.String())
+		if err != nil {
+			return errors.WithMessage(err, "http get")
+		}
+		defer res.Body.Close()
+		_, err = io.Copy(os.Stdout, res.Body)
+		if err != nil && err != io.EOF {
+			return errors.WithMessage(err, "copy response")
+		}
+		return nil
+	}, srv.ListenAndServe)
+	if readyErr != nil {
+		return readyErr
 	}
-	res, err := httpClient.Get(u.String())
-	if err != nil {
-		return errors.WithMessage(err, "http get")
-	}
-	defer res.Body.Close()
-	_, err = io.Copy(os.Stdout, res.Body)
-	if err != nil && err != io.EOF {
-		return errors.WithMessage(err, "copy response")
-	}
-	return nil
+	return <-done
 }
 
 func handleSignal(done chan error, do ...func() error) {
