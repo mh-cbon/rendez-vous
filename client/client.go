@@ -82,7 +82,7 @@ func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity) (string, e
 func (c *Client) Knock(remote string, knockToken string) (model.Message, error) {
 	m := model.Message{
 		Query: model.Knock,
-		Value: knockToken,
+		Data:  knockToken,
 	}
 	return c.query(remote, m)
 }
