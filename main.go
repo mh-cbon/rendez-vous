@@ -373,6 +373,11 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	c := client.FromSocket(srv)
 	srv.Handle(client.HandleQuery(c))
 
+	u, err := url.Parse(opts.URL)
+	if err != nil {
+		return errors.WithMessage(err, "url parse")
+	}
+
 	if opts.Knock {
 		id, err2 := identity.FromPbk(opts.Pbk, opts.Value)
 		if err2 != nil {
@@ -391,12 +396,7 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 		if err2 != nil {
 			return fmt.Errorf("knock failure: %v", err2.Error())
 		}
-
-	}
-
-	u, err := url.Parse(opts.URL)
-	if err != nil {
-		return errors.WithMessage(err, "url parse")
+		u.Host = found.Data
 	}
 
 	httpClient := http.Client{
