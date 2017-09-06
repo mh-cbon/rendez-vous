@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -101,7 +102,9 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 		return err
 	}
 
-	srv := socket.FromConn(conn).Handle(server.HandleQuery(nil))
+	srv := socket.FromConn(conn)
+	c := client.FromSocket(srv)
+	srv.Handle(server.HandleQuery(c, nil))
 
 	done := make(chan error)
 	go handleSignal(done, srv.Close)
@@ -142,8 +145,9 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 		return err
 	}
 
-	srv := socket.FromConn(conn).Handle(client.HandleQuery())
+	srv := socket.FromConn(conn)
 	c := client.FromSocket(srv)
+	srv.Handle(client.HandleQuery(c))
 
 	defer srv.Close()
 
@@ -245,8 +249,9 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 	}
 
 	pc := ln.(*utp.Socket)
-	srv := socket.FromConn(pc).Handle(client.HandleQuery())
+	srv := socket.FromConn(pc)
 	c := client.FromSocket(srv)
+	srv.Handle(client.HandleQuery(c))
 
 	registration := client.NewRegistration(time.Second*30, c)
 	registration.Config(opts.Remote, *id)
@@ -340,7 +345,7 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 
 type rendezVousHTTPCommand struct {
 	URL    string `short:"u" long:"url" description:"URL to execute"`
-	Listen string `short:"l" long:"listen" description:"UTP port to listen" default:"8082"`
+	Listen string `short:"l" long:"listen" description:"UTP port to listen" default:"0"`
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Pbk    string `long:"pbk" description:"An ed25519 prublic key - 32 len hex"`
 	Value  string `long:"value" description:"The value to sign" default:"website"`
@@ -369,26 +374,22 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	srv.Handle(client.HandleQuery(c))
 
 	if opts.Knock {
-		id, err := identity.FromPbk(opts.Pbk, opts.Value)
-		if err != nil {
-			return fmt.Errorf("knock failure: %v", err.Error())
+		id, err2 := identity.FromPbk(opts.Pbk, opts.Value)
+		if err2 != nil {
+			return fmt.Errorf("knock failure: %v", err2.Error())
 		}
-		found, err := c.Find(opts.Remote, id)
-		if err != nil {
-			return fmt.Errorf("knock failure: %v", err.Error())
-		}
-		_, err = c.Knock(opts.Remote, id)
-		if err != nil {
+		found, err2 := c.Knock(opts.Remote, id)
+		if err2 != nil {
 			for i := 0; i < 5; i++ {
-				_, err = c.Ping(found.Data)
-				if err == nil {
+				_, err2 = c.Ping(found.Data)
+				if err2 == nil {
 					break
 				}
 				<-time.After(time.Second)
 			}
 		}
-		if err != nil {
-			return fmt.Errorf("knock failure: %v", err.Error())
+		if err2 != nil {
+			return fmt.Errorf("knock failure: %v", err2.Error())
 		}
 
 	}
@@ -399,7 +400,15 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	}
 
 	httpClient := http.Client{
-		Transport: pc.Dial(u.Host),
+		Transport: &http.Transport{
+			Dial: func(network, addr string) (net.Conn, error) {
+				dial, err2 := pc.Dial(u.Host)
+				if err2 != nil {
+					return nil, errors.WithMessage(err2, "dial")
+				}
+				return dial, nil
+			},
+		},
 	}
 	res, err := httpClient.Get(u.String())
 	if err != nil {
