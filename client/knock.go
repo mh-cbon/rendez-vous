@@ -36,15 +36,27 @@ func (k Knock) Resolve(remote string) bool {
 }
 
 func (k Knock) Run(c *Client) (remote string, err error) {
-	for i := 0; i < 5; i++ {
-		go c.Knock(k.remote, k.id)
-		select {
-		case res := <-k.done:
-			return res, nil
-		case <-time.After(time.Second):
+	x := make(chan error)
+	f := make(chan bool)
+	go func() {
+		for i := 0; i < 5; i++ {
+			c.Knock(k.remote, k.id)
+			select {
+			case <-f:
+				return
+			case <-time.After(time.Second):
+			}
 		}
+		x <- errors.New("knock timeout")
+	}()
+	select {
+	case res := <-k.done:
+		go func() { f <- true }()
+		return res, nil
+	case err := <-x:
+		return "", err
 	}
-	return "", errors.New("knock timeout")
+	// return "", nil
 }
 
 type PendingKnocks struct {

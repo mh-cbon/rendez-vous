@@ -113,7 +113,7 @@ func (t *Tx) Listen(queryHandler TxHandler) error {
 	t.closed = make(chan bool)
 	go t.loop()
 	return t.UDP.Listen(func(data []byte, remote net.Addr) error {
-		if len(data) < 1 {
+		if len(data) < 1+binary.MaxVarintLen16 {
 			return fmt.Errorf("data too small")
 		}
 		kind := string(data[0])
@@ -140,6 +140,6 @@ func (t *Tx) Listen(queryHandler TxHandler) error {
 			t.l.Unlock()
 			return fmt.Errorf("transaction id not found: %v", txID)
 		}
-		return fmt.Errorf("wrong message remote:%v kind:%v data.len:%v", remote.String(), kind, len(data))
+		return fmt.Errorf("wrong message remote:%v kind:%v data.len:%v %q", remote.String(), kind, len(data), string(data))
 	})
 }
