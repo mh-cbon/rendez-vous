@@ -7,6 +7,14 @@ import (
 	"time"
 )
 
+// NewRegistrations thread safe store
+func NewRegistrations(s *Registrations) *TSRegistrations {
+	if s == nil {
+		s = &Registrations{}
+	}
+	return &TSRegistrations{store: s, m: &sync.Mutex{}}
+}
+
 // Registrations of peers
 type Registrations struct {
 	Peers []Peer
@@ -16,7 +24,7 @@ type Registrations struct {
 type Peer struct {
 	Address net.Addr
 	Pbk     []byte
-	create  time.Time
+	Create  time.Time
 }
 
 // Add a peer (remote+pbk)
@@ -96,14 +104,6 @@ type TSRegistrations struct {
 	m     *sync.Mutex
 }
 
-// New thread safe store
-func New(s *Registrations) *TSRegistrations {
-	if s == nil {
-		s = &Registrations{}
-	}
-	return &TSRegistrations{store: s, m: &sync.Mutex{}}
-}
-
 // Add a peer (remote+pbk)
 func (s *TSRegistrations) Add(address net.Addr, pbk []byte) {
 	s.m.Lock()
@@ -151,4 +151,11 @@ func (s *TSRegistrations) HasPbk(pbk []byte) bool {
 	s.m.Lock()
 	defer s.m.Unlock()
 	return s.store.HasPbk(pbk)
+}
+
+// Transact ....
+func (s *TSRegistrations) Transact(t func(s *Registrations)) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	t(s.store)
 }

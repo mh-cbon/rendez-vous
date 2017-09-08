@@ -48,7 +48,10 @@ func Test1(t *testing.T) {
 		defer ws.Process.Kill()
 		defer ws.Process.Release()
 
-		runHttpGet("http://127.0.0.1:8091/index.html")
+		err = runHttpGet(":8090", "http://127.0.0.1:8091/index.html")
+		if err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("3", func(t *testing.T) {
@@ -75,12 +78,17 @@ func Test1(t *testing.T) {
 		defer bw.Process.Release()
 
 		{
+			// port 8005 runs the ws of the browser
 			err := geturl(http.DefaultClient, "http://127.0.0.1:8085/index.html")
 			if err != nil {
 				t.Error(err)
 			}
 		}
-		proxyUrl, err := url.Parse("http://127.0.0.1:8085")
+		// port 8084 is a proxy to go either
+		//- in the rendez-vous network
+		//- in the browser ws
+		//- in the regular internet
+		proxyUrl, err := url.Parse("http://127.0.0.1:8084")
 		if err != nil {
 			t.Error(err)
 		}
@@ -147,8 +155,8 @@ func runBrowser(remote, listen, proxy, ws string) (*exec.Cmd, error) {
 	return cmd, timeout(cmd.Run, time.Second)
 }
 
-func runHttpGet(url string) error {
-	cmd := makeCmd("./t", "http", "--url", url)
+func runHttpGet(remote, url string) error {
+	cmd := makeCmd("./t", "http", "--url", url, "--remote", remote)
 	return cmd.Run()
 }
 

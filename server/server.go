@@ -1,125 +1,126 @@
-// Package server runs a rendez-vous meeting point server.
-// Its a server onto which clients can announce/find services.
 package server
 
 import (
+	"encoding/json"
 	"net"
 
-	"github.com/mh-cbon/dht/ed25519"
-	"github.com/mh-cbon/rendez-vous/client"
+	bencode "github.com/anacrolix/torrent/bencode"
+	"github.com/golang/protobuf/proto"
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/socket"
-	"github.com/mh-cbon/rendez-vous/store"
-	logging "github.com/op/go-logging"
+	"github.com/pkg/errors"
 )
 
-var (
-	missingPbk   = 301
-	missingSign  = 302
-	invalidValue = 303
-	invalidSign  = 304
-	wrongQuery   = 305
-	wrongPbk     = 306
-	missingData  = 307
-	wrongData    = 308
-
-	notFound = 404
-)
-
-var logger = logging.MustGetLogger("rendez-vous")
-
-//HandleQuery ...
-func HandleQuery(c *client.Client, registrations *store.TSRegistrations) socket.TxHandler {
-	if registrations == nil {
-		registrations = store.New(nil)
+// JSON server from a socket
+func JSON(s socket.Socket, handler MessageQueryHandler) *JSONServer {
+	return &JSONServer{
+		s:       s,
+		handler: handler,
 	}
-	return model.JSONHandler(func(remote net.Addr, v model.Message, writer model.MessageResponseWriter) error {
-		var res *model.Message
+}
 
-		switch v.Query {
+type JSONServer struct {
+	s       socket.Socket
+	handler MessageQueryHandler
+}
 
-		case model.Ping:
-			res = model.ReplyOk(remote, "")
-
-		case model.ReqKnock:
-			if len(v.Pbk) == 0 {
-				res = model.ReplyError(remote, missingPbk)
-
-			} else if len(v.Pbk) != 32 {
-				res = model.ReplyError(remote, wrongPbk)
-
-			} else if len(v.Data) == 0 {
-				res = model.ReplyError(remote, missingData)
-
-			} else if len(v.Data) > 100 {
-				res = model.ReplyError(remote, wrongData)
-
-			} else {
-				peer := registrations.GetByPbk(v.Pbk)
-				if peer != nil {
-					go c.DoKnock(peer.Address.String(), remote.String(), v.Data)
-					res = model.ReplyOk(remote, peer.Address.String())
-				}
-			}
-
-		case model.Register:
-			//todo: rendez-vous server should implement a write token
-
-			if len(v.Pbk) == 0 {
-				res = model.ReplyError(remote, missingPbk)
-
-			} else if len(v.Pbk) != 32 {
-				res = model.ReplyError(remote, wrongPbk)
-
-			} else if len(v.Sign) == 0 {
-				res = model.ReplyError(remote, missingSign)
-
-			} else if len(v.Value) > 100 {
-				res = model.ReplyError(remote, invalidValue)
-
-			} else if ed25519.Verify(v.Pbk, []byte(v.Value), v.Sign) == false {
-				res = model.ReplyError(remote, invalidSign)
-
-			} else {
-				go func() {
-					registrations.RemoveByAddr(remote.String())
-					registrations.RemoveByPbk(v.Pbk)
-					registrations.Add(remote, v.Pbk)
-				}()
-				res = model.ReplyOk(remote, "")
-			}
-
-		case model.Unregister:
-			//todo: unregister should accept/verify a pbk/sig/value with a special value to identify the query issuer.
-			if len(v.Pbk) == 0 {
-				res = model.ReplyError(remote, missingPbk)
-
-			} else {
-				addr := remote.String() //is it a safe value ?
-				go registrations.RemoveByAddr(addr)
-				res = model.ReplyOk(remote, "")
-			}
-
-		case model.Find:
-			if len(v.Pbk) == 0 {
-				res = model.ReplyError(remote, missingPbk)
-
-			} else if peer := registrations.GetByPbk(v.Pbk); peer != nil {
-				res = model.ReplyOk(remote, peer.Address.String())
-
-			} else {
-				res = model.ReplyError(remote, notFound)
-			}
-
-		case model.Join:
-			//todo: Join the swarm
-		case model.Leave:
-			//todo: leave the swarm
+// ListenAndServe the queries/responses
+func (s *JSONServer) ListenAndServe() error {
+	return s.s.Listen(func(remote net.Addr, data []byte, writer socket.ResponseWriter) error {
+		var v model.Message
+		err := json.Unmarshal(data, &v)
+		if err != nil {
+			return errors.WithMessage(err, "json unmarshal")
 		}
-
-		if res != nil {
-			return writer(remote, *res)
+		w := func(remote net.Addr, res *model.Message) error {
+			b, err := json.Marshal(res)
+			if err != nil {
+				return errors.WithMessage(err, "json marshal")
+			}
+			return writer(b)
+		}
+		if s.handler != nil {
+			return s.handler(remote, v, w)
 		}
 		return nil
 	})
 }
+
+// Close the server and the underlying socket.
+func (s *JSONServer) Close() error { return s.s.Close() }
+
+// Bencoded server from a socket
+func Bencoded(s socket.Socket, handler MessageQueryHandler) *BencodeServer {
+	return &BencodeServer{
+		s:       s,
+		handler: handler,
+	}
+}
+
+type BencodeServer struct {
+	s       socket.Socket
+	handler MessageQueryHandler
+}
+
+// ListenAndServe the queries/responses
+func (s *BencodeServer) ListenAndServe() error {
+	return s.s.Listen(func(remote net.Addr, data []byte, writer socket.ResponseWriter) error {
+		var v model.Message
+		err := bencode.Unmarshal(data, &v)
+		if err != nil {
+			return errors.WithMessage(err, "bencode unmarshal")
+		}
+		w := func(remote net.Addr, res *model.Message) error {
+			b, err := bencode.Marshal(res)
+			if err != nil {
+				return errors.WithMessage(err, "bencode marshal")
+			}
+			return writer(b)
+		}
+		if s.handler != nil {
+			return s.handler(remote, v, w)
+		}
+		return nil
+	})
+}
+
+// Close the server and the underlying socket.
+func (s *BencodeServer) Close() error { return s.s.Close() }
+
+// Protobuf server from a socket
+func Protobuf(s socket.Socket, handler MessageQueryHandler) *ProtoServer {
+	return &ProtoServer{
+		s:       s,
+		handler: handler,
+	}
+}
+
+type ProtoServer struct {
+	s       socket.Socket
+	handler MessageQueryHandler
+}
+
+// ListenAndServe the queries/responses
+func (s *ProtoServer) ListenAndServe() error {
+	return s.s.Listen(func(remote net.Addr, data []byte, writer socket.ResponseWriter) error {
+		var v model.Message
+		err := proto.Unmarshal(data, &v)
+		if err != nil {
+			return errors.WithMessage(err, "proto unmarshal")
+		}
+		w := func(remote net.Addr, res *model.Message) error {
+			b, err := proto.Marshal(res)
+			if err != nil {
+				return errors.WithMessage(err, "proto marshal")
+			}
+			return writer(b)
+		}
+		if s.handler != nil {
+			return s.handler(remote, v, w)
+		}
+		return nil
+	})
+}
+
+// Close the server and the underlying socket.
+func (s *ProtoServer) Close() error { return s.s.Close() }

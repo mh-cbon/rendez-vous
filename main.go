@@ -21,6 +21,7 @@ import (
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/server"
 	"github.com/mh-cbon/rendez-vous/socket"
+	"github.com/mh-cbon/rendez-vous/store"
 	"github.com/mh-cbon/rendez-vous/utils"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -30,7 +31,6 @@ type mainOpts struct {
 	Version bool `long:"version" description:"Show version"`
 }
 
-//todo: rendez-vous server should check ttl registrations
 //todo: rendez-vous server should implement a write token concept to register
 //todo: rendez-vous server unregister should accept/verify a pbk/sig/value with a special value to identify the query issuer.
 
@@ -102,19 +102,24 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 		return err
 	}
 
-	srv := socket.FromConn(conn)
-	c := client.FromSocket(srv)
-	srv.Handle(server.HandleQuery(c, nil))
+	sk := socket.FromConn(conn)
+
+	knocks := store.NewTSPendingKnocks(nil)
+	c := client.New(client.JSON(sk), knocks)
+
+	registrations := store.NewRegistrations(nil)
+	cleaner := server.NewCleaner(time.Second*30, registrations)
+	srv := server.JSON(sk, server.CentralPoint(c, registrations))
 
 	readyErr := ready(func() error {
 		log.Println("Listening...", ":"+opts.Listen)
 		return nil
-	}, srv.ListenAndServe)
+	}, srv.ListenAndServe, cleaner.Start)
 	if readyErr != nil {
 		return readyErr
 	}
 	done := make(chan error)
-	go handleSignal(done, srv.Close)
+	go handleSignal(done, srv.Close, cleaner.Stop)
 	return <-done
 }
 
@@ -144,11 +149,14 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 		return err
 	}
 
-	srv := socket.FromConn(conn)
-	c := client.FromSocket(srv)
-	srv.Handle(client.HandleQuery(c))
+	sk := socket.FromConn(conn)
 
-	defer srv.Close()
+	knocks := store.NewTSPendingKnocks(nil)
+	c := client.New(client.JSON(sk), knocks)
+	// srv := server.JSON(sk, server.PeerPoint(c, knocks))
+
+	defer sk.Close()
+	listen := func() error { return sk.Listen(nil) }
 
 	readyErr := ready(func() error {
 
@@ -215,7 +223,8 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 			return errors.Errorf("Unknwon query %q", opts.Query)
 		}
 		return nil
-	}, srv.ListenAndServe)
+	}, listen)
+
 	return readyErr
 }
 
@@ -247,9 +256,11 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 	}
 
 	pc := ln.(*utp.Socket)
-	srv := socket.FromConn(pc)
-	c := client.FromSocket(srv)
-	srv.Handle(client.HandleQuery(c))
+	sk := socket.FromConn(pc)
+
+	knocks := store.NewTSPendingKnocks(nil)
+	c := client.New(client.JSON(sk), knocks)
+	srv := server.JSON(sk, server.PeerPoint(c, knocks))
 
 	registration := client.NewRegistration(time.Second*30, c)
 	registration.Config(opts.Remote, *id)
@@ -308,8 +319,11 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 	}
 
 	pc := ln.(*utp.Socket)
-	srv := socket.FromConn(pc)
-	c := client.FromSocket(srv)
+	sk := socket.FromConn(pc)
+
+	knocks := store.NewTSPendingKnocks(nil)
+	c := client.New(client.JSON(sk), knocks)
+	srv := server.JSON(sk, server.PeerPoint(c, knocks))
 
 	wsAddr := "127.0.0.1:" + opts.Ws
 	wsHandler := browser.MakeWebsite(opts.Dir)
@@ -363,11 +377,12 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	if err != nil {
 		return err
 	}
-
 	pc := ln.(*utp.Socket)
-	srv := socket.FromConn(pc)
-	c := client.FromSocket(srv)
-	srv.Handle(client.HandleQuery(c))
+	sk := socket.FromConn(pc)
+
+	knocks := store.NewTSPendingKnocks(nil)
+	c := client.New(client.JSON(sk), knocks)
+	srv := server.JSON(sk, server.PeerPoint(c, knocks))
 
 	readyErr := ready(func() error {
 
@@ -412,12 +427,7 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 		}
 		return nil
 	}, srv.ListenAndServe)
-	if readyErr != nil {
-		return readyErr
-	}
-	done := make(chan error)
-	go handleSignal(done, srv.Close)
-	return <-done
+	return readyErr
 }
 
 func handleSignal(done chan error, do ...func() error) {

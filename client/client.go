@@ -12,19 +12,43 @@ import (
 	"github.com/mh-cbon/rendez-vous/identity"
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/socket"
+	"github.com/mh-cbon/rendez-vous/store"
 )
 
 var logger = logging.MustGetLogger("rendez-vous")
 
-// FromSocket ...
-func FromSocket(s socket.Socket) *Client {
-	return &Client{s: model.JSONClient{Socket: s}, knocks: NewPendingKnocksTS(nil)}
+// New ...
+func New(encoder MessageEncoder, knocks *store.TSPendingKnocks) *Client {
+	return &Client{encoder: encoder, knocks: knocks}
+}
+
+// JSON ...
+func JSON(s socket.Socket) *JSONClient {
+	return &JSONClient{s}
+}
+
+// Bencode ...
+func Bencode(s socket.Socket) *BencodeClient {
+	return &BencodeClient{s}
+}
+
+// Proto ...
+func Proto(s socket.Socket) *ProtoClient {
+	return &ProtoClient{s}
+}
+
+// MessageResponseHandler handles  query's response
+type MessageResponseHandler func(data model.Message, timedout bool) error
+
+// MessageEncoder handles encoded query/response
+type MessageEncoder interface {
+	Query(q model.Message, remote net.Addr, h MessageResponseHandler) error
 }
 
 // Client to speak with a rendez-vous server
 type Client struct {
-	s      model.MessageQuerier
-	knocks *PendingKnocksTS
+	encoder MessageEncoder
+	knocks  *store.TSPendingKnocks
 }
 
 func (c *Client) query(remote string, q model.Message) (model.Message, error) {
@@ -34,7 +58,7 @@ func (c *Client) query(remote string, q model.Message) (model.Message, error) {
 		return ret, err
 	}
 	w := make(chan error)
-	queryErr := c.s.Query(q, addr, func(res model.Message, timedout bool) error {
+	queryErr := c.encoder.Query(q, addr, func(res model.Message, timedout bool) error {
 		var replyErr error
 		if timedout {
 			replyErr = errors.New("query has timedout")
@@ -69,11 +93,20 @@ func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity) (string, e
 	m := model.Message{
 		Query: model.ReqKnock,
 		Pbk:   bPbk,
-		Data:  knock.id,
+		Data:  knock.ID,
 	}
 	f, err2 := c.query(remote, m)
 	if err2 == nil {
-		return knock.Run(f.Data, c)
+		for i := 0; i < 5; i++ {
+			var res string
+			res, err2 = knock.Run(func() error {
+				go c.Knock(f.Data, knock.ID)
+				return nil
+			})
+			if err2 == nil {
+				return res, err2
+			}
+		}
 	}
 	return "", err2
 }
