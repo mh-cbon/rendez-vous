@@ -27,7 +27,7 @@ func (i Identity) Derive(value string) (*Identity, error) {
 // FromPvk returns an Identity for registration
 func FromPvk(pvk, value string) (*Identity, error) {
 	if pvk == "" {
-		pvkRaw, _, err := src.GenerateKey(nil)
+		_, pvkRaw, err := src.GenerateKey(nil)
 		if err != nil {
 			return nil, err
 		}
