@@ -3,6 +3,7 @@ package identity
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"log"
 
 	"github.com/mh-cbon/dht/ed25519"
 )
@@ -40,6 +41,8 @@ func FromPvk(pvk, value string) (*Identity, error) {
 	signRaw := ed25519.Sign(pvkRaw, pbkRaw, []byte(value))
 	pbkHex := hex.EncodeToString(pbkRaw)
 	signHex := hex.EncodeToString(signRaw)
+	log.Println(ed25519.Sign(pvkRaw, pbkRaw, []byte(value)))
+	log.Println(ed25519.Sign(pvkRaw, pbkRaw, []byte(value)))
 
 	return &Identity{
 		Pvk:   pvk,
