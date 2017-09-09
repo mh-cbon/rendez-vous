@@ -41,8 +41,8 @@ func FromPvk(pvk, value string) (*Identity, error) {
 	signRaw := ed25519.Sign(pvkRaw, pbkRaw, []byte(value))
 	pbkHex := hex.EncodeToString(pbkRaw)
 	signHex := hex.EncodeToString(signRaw)
-	log.Println(ed25519.Sign(pvkRaw, pbkRaw, []byte(value)))
-	log.Println(ed25519.Sign(pvkRaw, pbkRaw, []byte(value)))
+	log.Println(ed25519.Verify(pbkRaw, []byte(value), signRaw))
+	log.Println(ed25519.Verify(pbkRaw, []byte(value), signRaw))
 
 	return &Identity{
 		Pvk:   pvk,
