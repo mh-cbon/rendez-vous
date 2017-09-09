@@ -21,6 +21,7 @@ func NewCentralPointNode(listen string) *CentralPointNode {
 		rendezVousNode: newrendezVousNode(listen),
 		registrations:  store.NewRegistrations(nil),
 	}
+	node.cleaner = server.NewCleaner(time.Second*30*2, node.registrations)
 	node.rendezVousNode.SetupHandler = node.setup
 	return node
 }
@@ -47,7 +48,6 @@ func (r *CentralPointNode) setup(sk socket.Socket) (*server.JSONServer, *client.
 	r.secSocket = socket
 	c2 := client.New(client.JSON(r.secSocket))
 
-	r.cleaner = server.NewCleaner(time.Second*30, r.registrations)
 	r.cleaner.Start()
 
 	behavior := server.OneOf(
