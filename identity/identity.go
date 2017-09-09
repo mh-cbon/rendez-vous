@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"log"
 
-	"github.com/mh-cbon/dht/ed25519"
+	src "golang.org/x/crypto/ed25519"
 )
 
 // PublicIdentity is a signed public identity
@@ -27,21 +27,26 @@ func (i Identity) Derive(value string) (*Identity, error) {
 // FromPvk returns an Identity for registration
 func FromPvk(pvk, value string) (*Identity, error) {
 	if pvk == "" {
-		pvkRaw, _, err := ed25519.GenerateKey(nil)
+		pvkRaw, _, err := src.GenerateKey(nil)
 		if err != nil {
 			return nil, err
 		}
 		pvk = hex.EncodeToString(pvkRaw)
 	}
-	pvkRaw, pbkRaw, err := ed25519.PvkFromHex(pvk)
+	// pvkRaw, pbkRaw, err := ed25519.PvkFromHex(pvk)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	pvkRaw, err := hex.DecodeString(pvk)
 	if err != nil {
 		return nil, err
 	}
-	signRaw := ed25519.Sign(pvkRaw, pbkRaw, []byte(value))
+	pbkRaw := src.PrivateKey(pvkRaw).Public().([]byte)
+	signRaw := src.Sign(pvkRaw, []byte(value))
 	pbkHex := hex.EncodeToString(pbkRaw)
 	signHex := hex.EncodeToString(signRaw)
-	log.Println(ed25519.Verify(pbkRaw, []byte(value), signRaw))
-	log.Println(ed25519.Verify(pbkRaw, []byte(value), signRaw))
+	log.Println(src.Verify(pbkRaw, []byte(value), signRaw))
+	log.Println(src.Verify(pbkRaw, []byte(value), signRaw))
 
 	return &Identity{
 		Pvk:   pvk,
@@ -69,10 +74,17 @@ func FromPbk(pbk, value string) (*PublicIdentity, error) {
 
 // Sign given value
 func Sign(pvk string, value string) ([]byte, error) {
-	pvkRaw, pbkRaw, err := ed25519.PvkFromHex(pvk)
+	// pvkRaw, pbkRaw, err := src.PvkFromHex(pvk)
+	pvkRaw, err := hex.DecodeString(pvk)
 	if err != nil {
 		return nil, err
 	}
-	signRaw := ed25519.Sign(pvkRaw, pbkRaw, []byte(value))
+	// pbkRaw := src.PrivateKey(pvkRaw).Public()
+	signRaw := src.Sign(pvkRaw, []byte(value))
 	return signRaw, nil
+}
+
+// Verify given value/sign
+func Verify(pbkRaw, signRaw []byte, value string) bool {
+	return src.Verify(pbkRaw, []byte(value), signRaw)
 }

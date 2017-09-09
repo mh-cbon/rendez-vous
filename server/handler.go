@@ -7,8 +7,8 @@ import (
 	"log"
 	"net"
 
-	"github.com/mh-cbon/dht/ed25519"
 	"github.com/mh-cbon/rendez-vous/client"
+	"github.com/mh-cbon/rendez-vous/identity"
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/store"
 	logging "github.com/op/go-logging"
@@ -85,7 +85,7 @@ func HandleRegister(registrations *store.TSRegistrations) MessageQueryHandler {
 		} else if len(m.Value) > 100 {
 			res = model.ReplyError(remote, invalidValue)
 
-		} else if ed25519.Verify(m.Pbk, []byte(m.Value), m.Sign) == false {
+		} else if identity.Verify(m.Pbk, m.Sign, m.Value) == false {
 			res = model.ReplyError(remote, invalidSign)
 			log.Printf("registration failed %x\n", m.Pbk)
 			log.Printf("registration failed %x\n", m.Sign)
@@ -113,7 +113,7 @@ func HandleUnregister(registrations *store.TSRegistrations) MessageQueryHandler 
 		if len(m.Pbk) == 0 {
 			res = model.ReplyError(remote, missingPbk)
 
-		} else if ed25519.Verify(m.Pbk, []byte(m.Value), m.Sign) == false {
+		} else if identity.Verify(m.Pbk, m.Sign, m.Value) == false {
 			res = model.ReplyError(remote, invalidSign)
 
 		} else {
