@@ -1,7 +1,6 @@
 package browser
 
 import (
-	"log"
 	"net"
 	"net/http"
 	"regexp"
@@ -52,9 +51,6 @@ func (r *Proxy) ListenAndServe() error {
 				Transport: &http.Transport{
 					Dial: func(network, addr string) (net.Conn, error) {
 						host, err := node.Resolve(remote, addr, "website", me)
-						log.Println(host, addr, err)
-						log.Println(host, addr, err)
-						log.Println(host, addr, err)
 						if err != nil {
 							return nil, err
 						}

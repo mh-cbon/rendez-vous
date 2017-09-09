@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"time"
 
 	"github.com/mh-cbon/rendez-vous/store"
@@ -28,8 +27,6 @@ func (c *Cleaner) Start() error {
 				c.store.Transact(func(store *store.Registrations) {
 					for i, p := range store.Peers {
 						if p.Create.Add(c.ttl).Before(time.Now()) {
-							log.Println("Clean ", p)
-							log.Println("Clean ", p)
 							if i+1 < len(store.Peers) {
 								store.Peers = append(store.Peers[:i], store.Peers[i+1:]...)
 							} else {

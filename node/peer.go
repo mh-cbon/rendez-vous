@@ -133,21 +133,17 @@ func (r *PeerNode) Resolve(remote string, addr string, service string, me *ident
 
 func (r *PeerNode) Dial(addr string, svc string) (net.Conn, error) {
 	id := []byte(fmt.Sprintf("%v:%v", len(svc), svc))
-	log.Println("addr", addr)
 	conn, err := r.PacketConn().Dial(addr)
-	log.Println("conn", err)
 	if err != nil {
 		return nil, err
 	}
 	_, err = conn.Write(id)
-	log.Println("Write", err)
 	if err != nil {
 		conn.Close()
 		return nil, err
 	}
 	b := make([]byte, len(id))
 	n, err := conn.Read(b)
-	log.Println("Read", err)
 	if err != nil {
 		conn.Close()
 		return nil, err
