@@ -1,7 +1,6 @@
 package identity
 
 import (
-	"crypto/rand"
 	"encoding/hex"
 	"log"
 
@@ -28,7 +27,7 @@ func (i Identity) Derive(value string) (*Identity, error) {
 // FromPvk returns an Identity for registration
 func FromPvk(pvk, value string) (*Identity, error) {
 	if pvk == "" {
-		pvkRaw, _, err := ed25519.GenerateKey(rand.Reader)
+		pvkRaw, _, err := ed25519.GenerateKey(nil)
 		if err != nil {
 			return nil, err
 		}
