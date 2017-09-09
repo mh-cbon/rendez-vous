@@ -93,7 +93,12 @@ func HandleRegister(registrations *store.TSRegistrations) MessageQueryHandler {
 
 		} else {
 			go func() {
-				registrations.AddUpdate(remote, m.Pbk, m.Sign, m.Value)
+				err := registrations.AddUpdate(remote, m.Pbk, m.Sign, m.Value)
+				if err != nil {
+					log.Println(err)
+					log.Println(err)
+					log.Println(err)
+				}
 			}()
 			res = model.ReplyOk(remote, "")
 		}
