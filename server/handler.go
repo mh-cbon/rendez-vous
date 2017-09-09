@@ -89,6 +89,7 @@ func HandleRegister(registrations *store.TSRegistrations) MessageQueryHandler {
 			res = model.ReplyError(remote, invalidSign)
 			log.Printf("registration failed %x\n", m.Pbk)
 			log.Printf("registration failed %x\n", m.Sign)
+			log.Printf("registration failed %v\n", m.Value)
 
 		} else {
 			go func() {
