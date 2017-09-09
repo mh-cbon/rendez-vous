@@ -41,7 +41,7 @@ func FromPvk(pvk, value string) (*Identity, error) {
 	if err != nil {
 		return nil, err
 	}
-	pbkRaw := src.PrivateKey(pvkRaw).Public().([]byte)
+	pbkRaw := src.PrivateKey(pvkRaw).Public().(src.PublicKey)
 	signRaw := src.Sign(pvkRaw, []byte(value))
 	pbkHex := hex.EncodeToString(pbkRaw)
 	signHex := hex.EncodeToString(signRaw)
