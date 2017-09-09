@@ -27,7 +27,11 @@ func (c *Cleaner) Start() error {
 				c.store.Transact(func(store *store.Registrations) {
 					for i, p := range store.Peers {
 						if p.Create.Add(c.ttl).Before(time.Now()) {
-							store.Peers = append(store.Peers[:i], store.Peers[i+1:]...)
+							if i+1 < len(store.Peers) {
+								store.Peers = append(store.Peers[:i], store.Peers[i+1:]...)
+							} else {
+								store.Peers = append(store.Peers[:0], store.Peers[:i]...)
+							}
 						}
 					}
 				})
