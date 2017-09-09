@@ -239,6 +239,7 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 		fmt.Println("pvk=", id.Pvk)
 		fmt.Println("pbk=", id.Pbk)
 		fmt.Println("sig=", id.Sign)
+		n.TestPort(opts.Remote, nil)
 
 		return nil
 	}, registration.Start, public.ListenAndServe, local.ListenAndServe)
