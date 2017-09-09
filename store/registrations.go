@@ -22,15 +22,19 @@ type Registrations struct {
 
 // Peer is an address and a pbk
 type Peer struct {
-	Address net.Addr
-	Pbk     []byte
-	Create  time.Time
+	Create     time.Time
+	Address    net.Addr
+	Pbk        []byte
+	Sign       []byte
+	Value      string
+	PortStatus int
 }
 
 // Add a peer (remote+pbk)
-func (s *Registrations) Add(address net.Addr, pbk []byte) {
-	p := Peer{address, make([]byte, len(pbk)), time.Now()}
+func (s *Registrations) Add(address net.Addr, pbk []byte, sign []byte, value string) {
+	p := Peer{time.Now(), address, make([]byte, len(pbk)), make([]byte, len(sign)), value, 0}
 	copy(p.Pbk, pbk)
+	copy(p.Sign, sign)
 	s.Peers = append(s.Peers, p)
 }
 
@@ -98,17 +102,48 @@ func (s *Registrations) HasPbk(pbk []byte) bool {
 	return false
 }
 
+// Select some peers
+func (s *Registrations) Select(start, limit int) []Peer {
+	var ret []Peer
+	if start < len(s.Peers) {
+		max := start + limit
+		if max > len(s.Peers) {
+			max = len(s.Peers)
+		}
+		ret = s.Peers[start:max]
+	}
+	return ret
+}
+
+// SetPortStatus of a peer
+func (s *Registrations) SetPortStatus(address string, status int) bool {
+	for _, p := range s.Peers {
+		if p.Address.String() == address {
+			p.PortStatus = status
+			return true
+		}
+	}
+	return false
+}
+
 // TSRegistrations is a TS Registrations
 type TSRegistrations struct {
 	store *Registrations
 	m     *sync.Mutex
 }
 
-// Add a peer (remote+pbk)
-func (s *TSRegistrations) Add(address net.Addr, pbk []byte) {
+// Transact ....
+func (s *TSRegistrations) Transact(t func(s *Registrations)) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	s.store.Add(address, pbk)
+	t(s.store)
+}
+
+// Add a peer (remote+pbk)
+func (s *TSRegistrations) Add(address net.Addr, pbk, sign []byte, value string) {
+	s.m.Lock()
+	defer s.m.Unlock()
+	s.store.Add(address, pbk, sign, value)
 }
 
 // GetByAddr find a peer by its addresss
@@ -153,9 +188,16 @@ func (s *TSRegistrations) HasPbk(pbk []byte) bool {
 	return s.store.HasPbk(pbk)
 }
 
-// Transact ....
-func (s *TSRegistrations) Transact(t func(s *Registrations)) {
+// Select some peers
+func (s *TSRegistrations) Select(start, limit int) []Peer {
 	s.m.Lock()
 	defer s.m.Unlock()
-	t(s.store)
+	return s.store.Select(start, limit)
+}
+
+// SetPortStatus of a peer
+func (s *TSRegistrations) SetPortStatus(address string, status int) bool {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.store.SetPortStatus(address, status)
 }

@@ -4,7 +4,7 @@ import (
 	"net"
 )
 
-// dontgo:generate protoc --go_out=. *.proto
+//go:generate protoc --go_out=. *.proto
 
 // Message of rendez-vous servers and clients.
 type Message struct {
@@ -22,6 +22,22 @@ type Message struct {
 	Address string `json:"a,omitempty" bencode:"a,omitempty" protobuf:"bytes,6,opt,name=address"`
 	// Data for query / response
 	Data string `json:"d,omitempty" bencode:"d,omitempty" protobuf:"bytes,7,opt,name=data"`
+	// Token for query / response
+	Token string `json:"t,omitempty" bencode:"t,omitempty" protobuf:"bytes,8,opt,name=token"`
+	// PortStatus 1=open 2=close
+	PortStatus int32 `json:"u,omitempty" bencode:"u,omitempty" protobuf:"bytes,9,opt,name=portStatus"`
+	// A list of peers
+	Peers []*Peer `json:"z,omitempty" bencode:"z,omitempty" protobuf:"bytes,10,opt,name=peers"`
+	// Start of the listing
+	Start int32 `json:"e,omitempty" bencode:"e,omitempty" protobuf:"bytes,11,opt,name=start"`
+	Limit int32 `json:"l,omitempty" bencode:"l,omitempty" protobuf:"bytes,12,opt,name=limit"`
+}
+type Peer struct {
+	Address    string `json:"a,omitempty" bencode:"a,omitempty" protobuf:"bytes,1,opt,name=address"`
+	PortStatus int32  `json:"u,omitempty" bencode:"u,omitempty" protobuf:"bytes,2,opt,name=portStatus"`
+	Pbk        []byte `json:"p,omitempty" bencode:"u,omitempty" protobuf:"bytes,3,opt,name=pbk"`
+	Sign       []byte `json:"s,omitempty" bencode:"s,omitempty" protobuf:"bytes,4,opt,name=sign"`
+	Value      string `json:"v,omitempty" bencode:"v,omitempty" protobuf:"bytes,5,opt,name=value"`
 }
 
 // defines default response codes
@@ -36,11 +52,14 @@ var (
 	Register   = "reg"
 	Unregister = "unreg"
 	Find       = "find"
+	List       = "list"
 	Join       = "join"
 	Leave      = "leave"
 	ReqKnock   = "reqknock"
 	DoKnock    = "doknock"
 	Knock      = "knock"
+	TestPort   = "testport"
+	PortTest   = "porttest"
 	// leaf node
 	Services = "svc"
 	//
@@ -55,6 +74,12 @@ func OkVerb(v string) bool {
 		v == Register ||
 		v == Unregister ||
 		v == Find ||
+		v == ReqKnock ||
+		v == DoKnock ||
+		v == Knock ||
+		v == TestPort ||
+		v == PortTest ||
+		v == Join ||
 		v == Join ||
 		v == Leave
 }

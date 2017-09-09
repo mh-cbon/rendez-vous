@@ -1,48 +1,62 @@
 package browser
 
 import (
-	"log"
+	"net"
 	"net/http"
 	"regexp"
-	"strings"
+	"time"
 
 	"github.com/elazarl/goproxy"
 	"github.com/mh-cbon/rendez-vous/client"
 	"github.com/mh-cbon/rendez-vous/identity"
-	"github.com/mh-cbon/rendez-vous/utils"
+	"github.com/mh-cbon/rendez-vous/model"
+	"github.com/mh-cbon/rendez-vous/node"
 )
 
-// MakeProxyForBrowser prepares a proxy to handle me.com requests
-// if the request is in the form me.com/...
-// it forwards the query to the given wsAddr
-// if the request is in the form <pbk>.me.com/...
-// then it searches for the peer address on remote
-// if found, it proxy the http request to the peer found.
-func MakeProxyForBrowser(remote string, wsAddr string, c *client.Client) http.Handler {
+func NewProxy(nodeListen, remote, websiteListen, proxyListen string, me *identity.PublicIdentity) *Proxy {
+	return &Proxy{
+		node:          node.NewPeerNode(nodeListen),
+		remote:        remote,
+		websiteListen: websiteListen,
+		proxyListen:   proxyListen,
+		me:            me,
+	}
+}
+
+type Proxy struct {
+	node          *node.PeerNode
+	remote        string
+	websiteListen string
+	proxy         *http.Server
+	proxyListen   string
+	me            *identity.PublicIdentity
+}
+
+func (r *Proxy) ListenAndServe() error {
+
+	if err := r.node.Start(); err != nil {
+		return err
+	}
+
+	node := r.node
+	remote := r.remote
+	me := r.me
+	websiteListen := r.websiteListen
+
 	browserProxy := goproxy.NewProxyHttpServer()
 	browserProxy.Verbose = true
 	browserProxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^.+[.]me[.]com$"))).DoFunc(
 		func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-			pbk := strings.Split(r.URL.Host, ".")[0]
-
-			id, err := identity.FromPbk(pbk, "website")
-			if err != nil {
-				return r, goproxy.NewResponse(r,
-					goproxy.ContentTypeText, http.StatusForbidden,
-					"failed: "+err.Error())
-			}
-
-			peer, err := c.Find(remote, id)
-			if err != nil {
-				return r, goproxy.NewResponse(r,
-					goproxy.ContentTypeText, http.StatusForbidden,
-					"failed: "+err.Error())
-			}
-			log.Println(peer)
-
-			r.URL.Host = peer.Data
 			httpClient := http.Client{
-				Transport: utils.UTPDialer(r.URL.Host),
+				Transport: &http.Transport{
+					Dial: func(network, addr string) (net.Conn, error) {
+						host, err := node.Resolve(remote, addr, "website", me)
+						if err != nil {
+							return nil, err
+						}
+						return node.Dial(host, "website")
+					},
+				},
 			}
 			res, err := httpClient.Get(r.URL.String())
 			if err != nil {
@@ -54,9 +68,53 @@ func MakeProxyForBrowser(remote string, wsAddr string, c *client.Client) http.Ha
 		})
 	browserProxy.OnRequest(goproxy.ReqHostMatches(regexp.MustCompile("^me[.]com$"))).DoFunc(
 		func(r *http.Request, ctx *goproxy.ProxyCtx) (*http.Request, *http.Response) {
-			r.URL.Host = wsAddr
+			r.URL.Host = websiteListen
 			return r, nil
 		})
+	r.proxy = httpServer(browserProxy, r.proxyListen)
+	return r.proxy.ListenAndServe()
+}
 
-	return browserProxy
+func (r *Proxy) Close() error {
+	var err error
+	if err2 := r.node.Close(); err2 != nil {
+		err = err2
+	}
+	if err2 := r.proxy.Close(); err2 != nil {
+		err = err2
+	}
+	return err
+}
+
+func (r *Proxy) ChangeListenAddress(listen string) error {
+	return r.node.Restart(listen)
+}
+
+func (r *Proxy) LocalAddr() net.Addr {
+	return r.node.LocalAddr()
+}
+
+func (r *Proxy) Port() *node.PortStatus {
+	return r.node.Port
+}
+
+func (r *Proxy) Client() *client.Client {
+	return r.node.GetClient()
+}
+
+func (r *Proxy) TestPort() *node.PortStatus {
+	return r.node.TestPort(r.remote, nil)
+}
+
+func (r *Proxy) List(start, limit int) ([]*model.Peer, error) {
+	return r.node.GetClient().List(r.remote, start, limit)
+}
+
+func httpServer(r http.Handler, addr string) *http.Server {
+	return &http.Server{
+		Handler:      r,
+		Addr:         addr,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
+	}
 }

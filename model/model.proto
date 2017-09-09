@@ -1,6 +1,13 @@
 syntax = "proto3";
 package model;
 
+message Peer {
+  string address = 1;
+  int32 portStatus = 2;
+  string pbk = 3;
+  string value = 4;
+}
+
 message Message {
   string query = 1;
   int32 code = 2;
@@ -9,4 +16,9 @@ message Message {
   string value = 5;
   string address = 6;
   string data = 7;
+  string token = 8;
+  int32 portStatus = 9;
+  repeated Peer peers = 10;
+  int32 start = 11;
+  int32 limit = 12;
 }

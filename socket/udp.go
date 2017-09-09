@@ -22,7 +22,6 @@ func (u *UDP) Close() error {
 
 //Conn underlying
 func (u *UDP) Conn() net.PacketConn {
-	u.conn.LocalAddr()
 	return u.conn
 }
 

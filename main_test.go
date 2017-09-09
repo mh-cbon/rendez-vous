@@ -52,6 +52,11 @@ func Test1(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+
+		err = runHttpGet(":8090", "http://b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74.me.com/index.html")
+		if err != nil {
+			t.Error(err)
+		}
 	})
 
 	t.Run("3", func(t *testing.T) {

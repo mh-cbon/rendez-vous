@@ -7,21 +7,17 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/signal"
 	"time"
 
-	"github.com/anacrolix/utp"
 	flags "github.com/jessevdk/go-flags"
 	"github.com/mh-cbon/rendez-vous/browser"
 	"github.com/mh-cbon/rendez-vous/client"
 	"github.com/mh-cbon/rendez-vous/identity"
 	"github.com/mh-cbon/rendez-vous/model"
-	"github.com/mh-cbon/rendez-vous/server"
-	"github.com/mh-cbon/rendez-vous/socket"
-	"github.com/mh-cbon/rendez-vous/store"
+	"github.com/mh-cbon/rendez-vous/node"
 	"github.com/mh-cbon/rendez-vous/utils"
 	logging "github.com/op/go-logging"
 	"github.com/pkg/errors"
@@ -97,29 +93,15 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 		return fmt.Errorf("-listen argument is required")
 	}
 
-	conn, err := utils.UDP(":" + opts.Listen)
-	if err != nil {
+	srv := node.NewCentralPointNode(":" + opts.Listen)
+	if err := srv.Start(); err != nil {
 		return err
 	}
 
-	sk := socket.FromConn(conn)
+	log.Println("Listening...", srv.LocalAddr().String())
 
-	knocks := store.NewTSPendingKnocks(nil)
-	c := client.New(client.JSON(sk), knocks)
-
-	registrations := store.NewRegistrations(nil)
-	cleaner := server.NewCleaner(time.Second*30, registrations)
-	srv := server.JSON(sk, server.CentralPoint(c, registrations))
-
-	readyErr := ready(func() error {
-		log.Println("Listening...", ":"+opts.Listen)
-		return nil
-	}, srv.ListenAndServe, cleaner.Start)
-	if readyErr != nil {
-		return readyErr
-	}
 	done := make(chan error)
-	go handleSignal(done, srv.Close, cleaner.Stop)
+	go handleSignal(done, srv.Close)
 	return <-done
 }
 
@@ -144,88 +126,75 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 		return fmt.Errorf("-query argument must be one of: %v", model.Verbs)
 	}
 
-	conn, err := utils.UDP(":" + opts.Listen)
-	if err != nil {
+	n := node.NewPeerNode(":" + opts.Listen)
+	if err := n.Start(); err != nil {
 		return err
 	}
 
-	sk := socket.FromConn(conn)
+	c := n.GetClient()
+	if opts.Query == "find" {
+		id, err := identity.FromPbk(opts.Pbk, opts.Value)
+		if err != nil {
+			return errors.WithMessage(err, opts.Query)
+		}
+		res, err := c.Find(opts.Remote, id)
+		if err != nil {
+			return errors.WithMessage(err, opts.Query)
+		}
+		fmt.Printf("%#v\n", res)
 
-	knocks := store.NewTSPendingKnocks(nil)
-	c := client.New(client.JSON(sk), knocks)
-	// srv := server.JSON(sk, server.PeerPoint(c, knocks))
+	} else if opts.Query == "unregister" {
 
-	defer sk.Close()
-	listen := func() error { return sk.Listen(nil) }
+		id, err := identity.FromPvk(opts.Pvk, opts.Value)
+		if err != nil {
+			return err
+		}
+		fmt.Println("pvk=", id.Pvk)
+		fmt.Println("pbk=", id.Pbk)
 
-	readyErr := ready(func() error {
+		res, err := c.Unregister(opts.Remote, id)
+		if err != nil {
+			return errors.WithMessage(err, opts.Query)
+		}
+		fmt.Printf("%#v\n", res)
 
-		if opts.Query == "find" {
-			id, err := identity.FromPbk(opts.Pbk, opts.Value)
-			if err != nil {
-				return errors.WithMessage(err, opts.Query)
-			}
-			res, err := c.Find(opts.Remote, id)
-			if err != nil {
-				return errors.WithMessage(err, opts.Query)
-			}
-			fmt.Printf("%#v\n", res)
+	} else if opts.Query == "register" {
 
-		} else if opts.Query == "unregister" {
+		id, err := identity.FromPvk(opts.Pvk, opts.Value)
+		if err != nil {
+			return err
+		}
+		fmt.Println("pvk=", id.Pvk)
+		fmt.Println("pbk=", id.Pbk)
+		fmt.Println("sig=", id.Sign)
 
-			id, err := identity.FromPvk(opts.Pvk, opts.Value)
-			if err != nil {
-				return err
-			}
-			fmt.Println("pvk=", id.Pvk)
-			fmt.Println("pbk=", id.Pbk)
+		res, err := c.Register(opts.Remote, id)
+		if err != nil {
+			return errors.WithMessage(err, opts.Query)
+		}
+		fmt.Printf("%#v\n", res)
 
-			res, err := c.Unregister(opts.Remote, id)
-			if err != nil {
-				return errors.WithMessage(err, opts.Query)
-			}
-			fmt.Printf("%#v\n", res)
-
-		} else if opts.Query == "register" {
-
-			id, err := identity.FromPvk(opts.Pvk, opts.Value)
-			if err != nil {
-				return err
-			}
-			fmt.Println("pvk=", id.Pvk)
-			fmt.Println("pbk=", id.Pbk)
-			fmt.Println("sig=", id.Sign)
-
-			res, err := c.Register(opts.Remote, id)
-			if err != nil {
-				return errors.WithMessage(err, opts.Query)
-			}
-			fmt.Printf("%#v\n", res)
-
-		} else if opts.Query == "ping" {
-			res, err := c.Ping(opts.Remote)
-			if err != nil {
-				if opts.Retry > 0 {
-					for i := 0; i < opts.Retry; i++ {
-						res, err = c.Ping(opts.Remote)
-						if err == nil {
-							break
-						}
+	} else if opts.Query == "ping" {
+		res, err := c.Ping(opts.Remote)
+		if err != nil {
+			if opts.Retry > 0 {
+				for i := 0; i < opts.Retry; i++ {
+					res, err = c.Ping(opts.Remote)
+					if err == nil {
+						break
 					}
 				}
-				if err != nil {
-					return errors.WithMessage(err, opts.Query)
-				}
 			}
-			fmt.Printf("%#v\n", res)
-
-		} else {
-			return errors.Errorf("Unknwon query %q", opts.Query)
+			if err != nil {
+				return errors.WithMessage(err, opts.Query)
+			}
 		}
-		return nil
-	}, listen)
+		fmt.Printf("%#v\n", res)
+	} else {
+		errors.Errorf("Unknwon query %q", opts.Query)
+	}
 
-	return readyErr
+	return nil
 }
 
 type rendezVousWebsiteCommand struct {
@@ -245,26 +214,20 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 		return fmt.Errorf("-dir argument is required")
 	}
 
-	ln, err := utp.Listen(":" + opts.Listen)
-	if err != nil {
+	n := node.NewPeerNode(":" + opts.Listen)
+	if err := n.Start(); err != nil {
 		return err
 	}
+	c := n.GetClient()
 
 	id, err := identity.FromPvk(opts.Pvk, opts.Value)
 	if err != nil {
 		return err
 	}
-
-	pc := ln.(*utp.Socket)
-	sk := socket.FromConn(pc)
-
-	knocks := store.NewTSPendingKnocks(nil)
-	c := client.New(client.JSON(sk), knocks)
-	srv := server.JSON(sk, server.PeerPoint(c, knocks))
-
 	registration := client.NewRegistration(time.Second*30, c)
 	registration.Config(opts.Remote, *id)
 
+	ln := n.ServiceListener(opts.Value)
 	handler := http.FileServer(http.Dir(opts.Dir))
 	public := utils.ServeHTTPFromListener(ln, httpServer(handler, "")) //todo: replace with a transparent proxy, so the website can live into another process
 	local := httpServer(handler, "127.0.0.1:"+opts.Local)
@@ -278,78 +241,12 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 		fmt.Println("sig=", id.Sign)
 
 		return nil
-	}, srv.ListenAndServe, registration.Start, public.ListenAndServe, local.ListenAndServe)
+	}, registration.Start, public.ListenAndServe, local.ListenAndServe)
 	if readyErr != nil {
 		return readyErr
 	}
 	done := make(chan error)
-	go handleSignal(done, registration.Stop, srv.Close, public.Close, local.Close)
-	return <-done
-}
-
-type rendezVousBrowserCommand struct {
-	Listen   string `short:"l" long:"listen" description:"Port to listen" default:"0"`
-	Remote   string `short:"r" long:"remote" description:"The rendez-vous address"`
-	Proxy    string `short:"p" long:"proxy" description:"The port of the proxy" default:"9005"`
-	Dir      string `long:"dir" description:"The directory of the website" default:"browser/static/"`
-	Ws       string `short:"w" long:"ws" description:"The port of the website"`
-	Headless bool   `long:"headless" description:"Run in headless mode (no-gui)"`
-}
-
-func (opts *rendezVousBrowserCommand) Execute(args []string) error {
-	if opts.Listen == "" {
-		return fmt.Errorf("--listen argument is required")
-	}
-	if opts.Remote == "" {
-		return fmt.Errorf("--remote argument is required")
-	}
-	if opts.Proxy == "" {
-		return fmt.Errorf("--proxy argument is required")
-	}
-	if opts.Ws == "" {
-		return fmt.Errorf("--ws argument is required")
-	}
-	if opts.Dir == "" {
-		return fmt.Errorf("--dir argument is required")
-	}
-
-	ln, err := utp.Listen(":" + opts.Listen)
-	if err != nil {
-		return err
-	}
-
-	pc := ln.(*utp.Socket)
-	sk := socket.FromConn(pc)
-
-	knocks := store.NewTSPendingKnocks(nil)
-	c := client.New(client.JSON(sk), knocks)
-	srv := server.JSON(sk, server.PeerPoint(c, knocks))
-
-	wsAddr := "127.0.0.1:" + opts.Ws
-	wsHandler := browser.MakeWebsite(opts.Dir)
-	gateway := httpServer(wsHandler, wsAddr)
-
-	browserProxy := browser.MakeProxyForBrowser(opts.Remote, wsAddr, c)
-	proxy := httpServer(browserProxy, "127.0.0.1:"+opts.Proxy)
-
-	readyErr := ready(func() error {
-		log.Println("me.com server listening on", wsAddr)
-
-		if opts.Headless == false {
-			cmd := exec.Command("chromium-browser", "--proxy-server="+proxy.Addr, "me.com")
-			if err := cmd.Start(); err != nil {
-				return err
-			}
-			cmd.Process.Release()
-		}
-
-		return nil
-	}, srv.ListenAndServe, gateway.ListenAndServe, proxy.ListenAndServe)
-	if readyErr != nil {
-		return readyErr
-	}
-	done := make(chan error)
-	go handleSignal(done, srv.Close, proxy.Close, gateway.Close)
+	go handleSignal(done, registration.Stop, public.Close, local.Close)
 	return <-done
 }
 
@@ -373,61 +270,100 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 		return fmt.Errorf("--remote argument is required")
 	}
 
-	ln, err := utp.Listen(":" + opts.Listen)
+	n := node.NewPeerNode(":" + opts.Listen)
+	if err := n.Start(); err != nil {
+		return err
+	}
+
+	id, err := identity.FromPbk(opts.Pbk, opts.Value)
+	if err != nil {
+		return fmt.Errorf("id failure: %v", err.Error())
+	}
+
+	httpClient := http.Client{
+		Transport: &http.Transport{
+			Dial: func(network, addr string) (net.Conn, error) {
+				host, err := n.Resolve(opts.Remote, addr, opts.Value, id)
+				if err != nil {
+					return nil, err
+				}
+				return n.Dial(host, opts.Value)
+			},
+		},
+	}
+	res, err := httpClient.Get(opts.URL)
+	if err != nil {
+		return errors.WithMessage(err, "http get")
+	}
+	defer res.Body.Close()
+	_, err = io.Copy(os.Stdout, res.Body)
+	if err != nil && err != io.EOF {
+		return errors.WithMessage(err, "copy response")
+	}
+	return nil
+}
+
+type rendezVousBrowserCommand struct {
+	Listen   string `short:"l" long:"listen" description:"Port to listen" default:"0"`
+	Remote   string `short:"r" long:"remote" description:"The rendez-vous address"`
+	Proxy    string `short:"p" long:"proxy" description:"The port of the proxy" default:"9015"`
+	Dir      string `long:"dir" description:"The directory of the website" default:"browser/static/"`
+	Ws       string `short:"w" long:"ws" description:"The port of the website" default:"9016"`
+	Headless bool   `long:"headless" description:"Run in headless mode (no-gui)"`
+}
+
+func (opts *rendezVousBrowserCommand) Execute(args []string) error {
+	if opts.Listen == "" {
+		return fmt.Errorf("--listen argument is required")
+	}
+	if opts.Remote == "" {
+		return fmt.Errorf("--remote argument is required")
+	}
+	if opts.Proxy == "" {
+		return fmt.Errorf("--proxy argument is required")
+	}
+	if opts.Ws == "" {
+		return fmt.Errorf("--ws argument is required")
+	}
+	if opts.Dir == "" {
+		return fmt.Errorf("--dir argument is required")
+	}
+
+	wsAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:"+opts.Ws)
 	if err != nil {
 		return err
 	}
-	pc := ln.(*utp.Socket)
-	sk := socket.FromConn(pc)
+	proxyAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:"+opts.Proxy)
+	if err != nil {
+		return err
+	}
 
-	knocks := store.NewTSPendingKnocks(nil)
-	c := client.New(client.JSON(sk), knocks)
-	srv := server.JSON(sk, server.PeerPoint(c, knocks))
+	proxy := browser.NewProxy(":"+opts.Listen, opts.Remote, wsAddr.String(), proxyAddr.String(), nil)
+	gateway := httpServer(browser.MakeWebsite(proxy, opts.Dir), wsAddr.String())
 
 	readyErr := ready(func() error {
+		log.Println("me.com server listening on", wsAddr.String())
+		log.Println("browser proxy listening on", proxyAddr.String())
 
-		u, err := url.Parse(opts.URL)
-		if err != nil {
-			return errors.WithMessage(err, "url parse")
-		}
-
-		if opts.Knock {
-			id, err2 := identity.FromPbk(opts.Pbk, opts.Value)
-			if err2 != nil {
-				return fmt.Errorf("knock failure: %v", err2.Error())
+		if opts.Headless == false {
+			cmd := exec.Command("chromium-browser", "--proxy-server="+proxyAddr.String(), "http://me.com")
+			if err := cmd.Start(); err != nil {
+				return err
 			}
-			newRemote, err2 := c.ReqKnock(opts.Remote, id)
-			log.Println("found ", newRemote)
-			log.Println("err2 ", err2)
-			if err2 != nil {
-				return fmt.Errorf("knock failure: %v", err2.Error())
-			}
-			u.Host = newRemote
+			cmd.Process.Release()
 		}
 
-		httpClient := http.Client{
-			Transport: &http.Transport{
-				Dial: func(network, addr string) (net.Conn, error) {
-					dial, err2 := pc.Dial(u.Host)
-					if err2 != nil {
-						return nil, errors.WithMessage(err2, "dial")
-					}
-					return dial, nil
-				},
-			},
-		}
-		res, err := httpClient.Get(u.String())
-		if err != nil {
-			return errors.WithMessage(err, "http get")
-		}
-		defer res.Body.Close()
-		_, err = io.Copy(os.Stdout, res.Body)
-		if err != nil && err != io.EOF {
-			return errors.WithMessage(err, "copy response")
-		}
+		status := proxy.TestPort()
+		log.Println("port", status.Num(), " is open:", status.Open())
+
 		return nil
-	}, srv.ListenAndServe)
-	return readyErr
+	}, proxy.ListenAndServe, gateway.ListenAndServe)
+	if readyErr != nil {
+		return readyErr
+	}
+	done := make(chan error)
+	go handleSignal(done, proxy.Close, gateway.Close)
+	return <-done
 }
 
 func handleSignal(done chan error, do ...func() error) {

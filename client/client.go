@@ -3,7 +3,6 @@
 package client
 
 import (
-	"encoding/hex"
 	"net"
 
 	logging "github.com/op/go-logging"
@@ -12,14 +11,13 @@ import (
 	"github.com/mh-cbon/rendez-vous/identity"
 	"github.com/mh-cbon/rendez-vous/model"
 	"github.com/mh-cbon/rendez-vous/socket"
-	"github.com/mh-cbon/rendez-vous/store"
 )
 
 var logger = logging.MustGetLogger("rendez-vous")
 
 // New ...
-func New(encoder MessageEncoder, knocks *store.TSPendingKnocks) *Client {
-	return &Client{encoder: encoder, knocks: knocks}
+func New(encoder MessageEncoder) *Client {
+	return &Client{encoder: encoder}
 }
 
 // JSON ...
@@ -48,7 +46,6 @@ type MessageEncoder interface {
 // Client to speak with a rendez-vous server
 type Client struct {
 	encoder MessageEncoder
-	knocks  *store.TSPendingKnocks
 }
 
 func (c *Client) query(remote string, q model.Message) (model.Message, error) {
@@ -83,39 +80,20 @@ func (c *Client) Ping(remote string) (model.Message, error) {
 }
 
 // ReqKnock help
-func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity) (string, error) {
-	bPbk, err := hex.DecodeString(id.Pbk)
-	if err != nil {
-		return "", err
-	}
-	knock := c.knocks.Add("")
-	defer c.knocks.Rm(knock)
+func (c *Client) ReqKnock(remote string, id *identity.PublicIdentity, token string) (model.Message, error) {
 	m := model.Message{
 		Query: model.ReqKnock,
-		Pbk:   bPbk,
-		Data:  knock.ID,
+		Pbk:   id.BPbk,
+		Token: token,
 	}
-	f, err2 := c.query(remote, m)
-	if err2 == nil {
-		for i := 0; i < 5; i++ {
-			var res string
-			res, err2 = knock.Run(func() error {
-				go c.Knock(f.Data, knock.ID)
-				return nil
-			})
-			if err2 == nil {
-				return res, err2
-			}
-		}
-	}
-	return "", err2
+	return c.query(remote, m)
 }
 
 // Knock send
 func (c *Client) Knock(remote string, knockToken string) (model.Message, error) {
 	m := model.Message{
 		Query: model.Knock,
-		Data:  knockToken,
+		Token: knockToken,
 	}
 	return c.query(remote, m)
 }
@@ -125,20 +103,16 @@ func (c *Client) DoKnock(remote string, knockAddress string, knockToken string) 
 	m := model.Message{
 		Query: model.DoKnock,
 		Data:  knockAddress,
-		Value: knockToken,
+		Token: knockToken,
 	}
 	return c.query(remote, m)
 }
 
 // Find peer for given pbk
 func (c *Client) Find(remote string, id *identity.PublicIdentity) (model.Message, error) {
-	bPbk, err := hex.DecodeString(id.Pbk)
-	if err != nil {
-		return model.Message{}, err
-	}
 	m := model.Message{
 		Query: model.Find,
-		Pbk:   bPbk,
+		Pbk:   id.BPbk,
 		Value: id.Value,
 	}
 	return c.query(remote, m)
@@ -146,18 +120,10 @@ func (c *Client) Find(remote string, id *identity.PublicIdentity) (model.Message
 
 // Register yourself
 func (c *Client) Register(remote string, id *identity.Identity) (model.Message, error) {
-	bPbk, err := hex.DecodeString(id.Pbk)
-	if err != nil {
-		return model.Message{}, err
-	}
-	bSign, err2 := hex.DecodeString(id.Sign)
-	if err2 != nil {
-		return model.Message{}, err2
-	}
 	m := model.Message{
 		Query: model.Register,
-		Pbk:   bPbk,
-		Sign:  bSign,
+		Pbk:   id.BPbk,
+		Sign:  id.BSign,
 		Value: id.Value,
 	}
 	return c.query(remote, m)
@@ -165,19 +131,48 @@ func (c *Client) Register(remote string, id *identity.Identity) (model.Message, 
 
 // Unregister yourself
 func (c *Client) Unregister(remote string, id *identity.Identity) (model.Message, error) {
-	bPbk, err := hex.DecodeString(id.Pbk)
+	unregister, err := id.Derive("unregister")
 	if err != nil {
 		return model.Message{}, err
 	}
-	bSign, err2 := hex.DecodeString(id.Sign)
-	if err2 != nil {
-		return model.Message{}, err2
-	}
 	m := model.Message{
 		Query: model.Unregister,
-		Pbk:   bPbk,
-		Sign:  bSign,
-		Value: id.Value,
+		Pbk:   unregister.BPbk,
+		Sign:  unregister.BSign,
+		Value: unregister.Value,
+	}
+	return c.query(remote, m)
+}
+
+// List some peers
+func (c *Client) List(remote string, start, limit int) ([]*model.Peer, error) {
+	m := model.Message{
+		Query: model.List,
+		Start: int32(start),
+		Limit: int32(limit),
+	}
+	res, err := c.query(remote, m)
+	if err != nil {
+		return nil, err
+	}
+	return res.Peers, nil
+}
+
+// TestPort sends testport query
+func (c *Client) TestPort(remote string, token string) (model.Message, error) {
+	m := model.Message{
+		Query: model.TestPort,
+		Token: token,
+	}
+	return c.query(remote, m)
+}
+
+// PortTest anwers TestPort
+func (c *Client) PortTest(remote string, token string) (model.Message, error) {
+	m := model.Message{
+		Query:   model.PortTest,
+		Token:   token,
+		Address: remote,
 	}
 	return c.query(remote, m)
 }

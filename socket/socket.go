@@ -37,5 +37,5 @@ type Socket interface {
 	Query(data []byte, remote net.Addr, h ResponseHandler) error
 	Reply(data []byte, remote net.Addr, txID uint16) error
 	Close() error
-	Conn() net.PacketConn
+	LocalAddr() net.Addr
 }

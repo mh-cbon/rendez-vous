@@ -93,7 +93,7 @@ func HandleRegister(registrations *store.TSRegistrations) MessageQueryHandler {
 			go func() {
 				registrations.RemoveByAddr(remote.String())
 				registrations.RemoveByPbk(m.Pbk)
-				registrations.Add(remote, m.Pbk)
+				registrations.Add(remote, m.Pbk, m.Sign, m.Value)
 			}()
 			res = model.ReplyOk(remote, "")
 		}
@@ -108,8 +108,11 @@ func HandleUnregister(registrations *store.TSRegistrations) MessageQueryHandler 
 		if len(m.Pbk) == 0 {
 			res = model.ReplyError(remote, missingPbk)
 
+		} else if ed25519.Verify(m.Pbk, []byte(m.Value), m.Sign) == false {
+			res = model.ReplyError(remote, invalidSign)
+
 		} else {
-			go registrations.RemoveByAddr(remote.String())
+			go registrations.RemoveByPbk(m.Pbk)
 			res = model.ReplyOk(remote, "")
 		}
 		return reply(remote, res)
@@ -124,9 +127,26 @@ func HandleFind(registrations *store.TSRegistrations) MessageQueryHandler {
 
 		} else if peer := registrations.GetByPbk(m.Pbk); peer != nil {
 			res = model.ReplyOk(remote, peer.Address.String())
+			res.PortStatus = int32(peer.PortStatus)
+			res.Value = peer.Value
+			res.Pbk = peer.Pbk
+			res.Sign = peer.Sign
 
 		} else {
 			res = model.ReplyError(remote, notFound)
+		}
+		return reply(remote, res)
+	})
+}
+
+func HandleList(registrations *store.TSRegistrations) MessageQueryHandler {
+	return QueryHandler(model.List, func(remote net.Addr, m model.Message, reply MessageResponseWriter) error {
+		var res *model.Message
+		found := registrations.Select(int(m.Start), int(m.Limit))
+		res = model.ReplyOk(remote, "")
+		res.Peers = []*model.Peer{}
+		for _, f := range found {
+			res.Peers = append(res.Peers, &model.Peer{f.Address.String(), int32(f.PortStatus), f.Pbk, f.Sign, f.Value})
 		}
 		return reply(remote, res)
 	})
@@ -150,7 +170,7 @@ func HandleRequestKnock(registrations *store.TSRegistrations, c *client.Client) 
 		} else {
 			peer := registrations.GetByPbk(m.Pbk)
 			if peer != nil {
-				go c.DoKnock(peer.Address.String(), remote.String(), m.Data)
+				go c.DoKnock(peer.Address.String(), remote.String(), m.Token)
 				res = model.ReplyOk(remote, peer.Address.String())
 			} else {
 				res = model.ReplyError(remote, notFound)
@@ -160,17 +180,19 @@ func HandleRequestKnock(registrations *store.TSRegistrations, c *client.Client) 
 	})
 }
 
-func HandleDoKnock(c *client.Client, knocks *store.TSPendingKnocks) MessageQueryHandler {
+func HandleDoKnock(c *client.Client, knocks *store.TSPendingOps) MessageQueryHandler {
 	return QueryHandler(model.DoKnock, func(remote net.Addr, m model.Message, reply MessageResponseWriter) error {
 		//todo: protect from undesired usage.
 		addrToKnock := m.Data
-		knockToken := m.Value
-		knock := knocks.Add(knockToken)
+		knockToken := m.Token
+		knock := knocks.Add(knockToken, func(remote string, m model.Message) bool {
+			return m.Token == knockToken
+		})
 		go func() {
 			defer knocks.Rm(knock)
 			for i := 0; i < 5; i++ {
 				_, err := knock.Run(func() error {
-					_, err := c.Knock(addrToKnock, knock.ID)
+					_, err := c.Knock(addrToKnock, knock.Token)
 					return err
 				})
 				if err == nil {
@@ -182,18 +204,49 @@ func HandleDoKnock(c *client.Client, knocks *store.TSPendingKnocks) MessageQuery
 	})
 }
 
-func HandleKnock(knocks *store.TSPendingKnocks) MessageQueryHandler {
+func HandleKnock(knocks *store.TSPendingOps) MessageQueryHandler {
 	return QueryHandler(model.Knock, func(remote net.Addr, m model.Message, reply MessageResponseWriter) error {
 		var res *model.Message
-		log.Println("knock q: ", remote.String(), m.Data)
-		if knocks.Resolve(remote.String(), m.Data) {
-			res = model.ReplyOk(remote, m.Data)
+		log.Println("knock q: ", remote.String(), m.Token)
+		if knocks.Resolve(remote.String(), m.Token, m) {
+			res = model.ReplyOk(remote, m.Token)
 			log.Println("knock success")
 		} else {
 			log.Println("knock fail")
 		}
 		if res == nil {
 			return nil
+		}
+		return reply(remote, res)
+	})
+}
+
+func HandleTestPort(registrations *store.TSRegistrations, client *client.Client) MessageQueryHandler {
+	return QueryHandler(model.TestPort, func(remote net.Addr, m model.Message, reply MessageResponseWriter) error {
+		//todo: protect from undesired usage.
+		go func(remote string, token string) {
+			for i := 0; i < 5; i++ {
+				res, err := client.PortTest(remote, token)
+				if err == nil {
+					log.Println(res)
+					registrations.SetPortStatus(remote, model.PortStatusOpen)
+					return
+				}
+			}
+		}(remote.String(), m.Token)
+		return nil
+	})
+}
+
+func HandlePortTest(portTests *store.TSPendingOps) MessageQueryHandler {
+	return QueryHandler(model.PortTest, func(remote net.Addr, m model.Message, reply MessageResponseWriter) error {
+		var res *model.Message
+		log.Println("porttest q: ", remote.String(), m.Token)
+		if portTests.Resolve(remote.String(), m.Token, m) {
+			res = model.ReplyOk(remote, m.Token)
+			log.Println("porttest success")
+		} else {
+			log.Println("porttest fail")
 		}
 		return reply(remote, res)
 	})
