@@ -93,9 +93,7 @@ func HandleRegister(registrations *store.TSRegistrations) MessageQueryHandler {
 
 		} else {
 			go func() {
-				registrations.RemoveByAddr(remote.String())
-				registrations.RemoveByPbk(m.Pbk)
-				registrations.Add(remote, m.Pbk, m.Sign, m.Value)
+				registrations.AddUpdate(remote, m.Pbk, m.Sign, m.Value)
 			}()
 			res = model.ReplyOk(remote, "")
 		}

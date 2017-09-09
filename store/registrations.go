@@ -2,6 +2,7 @@ package store
 
 import (
 	"bytes"
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -36,6 +37,20 @@ func (s *Registrations) Add(address net.Addr, pbk []byte, sign []byte, value str
 	copy(p.Pbk, pbk)
 	copy(p.Sign, sign)
 	s.Peers = append(s.Peers, p)
+}
+
+// AddUpdate a peer (remote+pbk)
+func (s *Registrations) AddUpdate(address net.Addr, pbk []byte, sign []byte, value string) error {
+	p := s.GetByPbk(pbk)
+	if p != nil {
+		if p.Address.String() != address.String() {
+			return errors.New("Mismatching address")
+		}
+		p.Create = time.Now()
+	} else {
+		s.Add(address, pbk, sign, value)
+	}
+	return nil
 }
 
 // GetByAddr find a peer by its addresss
@@ -144,6 +159,13 @@ func (s *TSRegistrations) Add(address net.Addr, pbk, sign []byte, value string) 
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.store.Add(address, pbk, sign, value)
+}
+
+// AddUpdate a peer (remote+pbk)
+func (s *TSRegistrations) AddUpdate(address net.Addr, pbk, sign []byte, value string) error {
+	s.m.Lock()
+	defer s.m.Unlock()
+	return s.store.AddUpdate(address, pbk, sign, value)
 }
 
 // GetByAddr find a peer by its addresss
