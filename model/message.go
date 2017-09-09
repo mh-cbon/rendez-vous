@@ -42,7 +42,7 @@ type Peer struct {
 
 // defines default response codes
 var (
-	OkCode = 200
+	OkCode int32 = 200
 )
 
 // defines default verb
@@ -80,7 +80,6 @@ func OkVerb(v string) bool {
 		v == TestPort ||
 		v == PortTest ||
 		v == Join ||
-		v == Join ||
 		v == Leave
 }
 
@@ -92,9 +91,9 @@ func Reply(remote net.Addr) *Message {
 }
 
 // ReplyError builds an error reply message
-func ReplyError(remote net.Addr, code int) *Message {
+func ReplyError(remote net.Addr, code int32) *Message {
 	m := Reply(remote)
-	m.Code = int32(code)
+	m.Code = code
 	return m
 }
 

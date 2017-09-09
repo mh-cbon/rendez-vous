@@ -15,16 +15,15 @@ import (
 )
 
 var (
-	missingPbk   = 301
-	missingSign  = 302
-	invalidValue = 303
-	invalidSign  = 304
-	wrongQuery   = 305
-	wrongPbk     = 306
-	missingData  = 307
-	wrongData    = 308
-
-	notFound = 404
+	missingPbk   int32 = 301
+	missingSign  int32 = 302
+	invalidValue int32 = 303
+	invalidSign  int32 = 304
+	wrongQuery   int32 = 305
+	wrongPbk     int32 = 306
+	missingData  int32 = 307
+	wrongData    int32 = 308
+	notFound     int32 = 404
 )
 
 var logger = logging.MustGetLogger("rendez-vous")
@@ -88,6 +87,8 @@ func HandleRegister(registrations *store.TSRegistrations) MessageQueryHandler {
 
 		} else if ed25519.Verify(m.Pbk, []byte(m.Value), m.Sign) == false {
 			res = model.ReplyError(remote, invalidSign)
+			log.Printf("registration failed %x\n", m.Pbk)
+			log.Printf("registration failed %x\n", m.Sign)
 
 		} else {
 			go func() {

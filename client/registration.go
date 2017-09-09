@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/mh-cbon/rendez-vous/identity"
+	"github.com/mh-cbon/rendez-vous/model"
 )
 
 //Registration happens at regular time intervals
@@ -40,9 +41,12 @@ func (r *Registration) Stop() error {
 }
 
 func (r *Registration) register() {
-	_, err := r.client.Register(r.remote, &r.id)
+	res, err := r.client.Register(r.remote, &r.id)
 	if err != nil {
 		log.Println(err)
+	}
+	if res.Code != model.OkCode {
+		log.Println("registration failed", res)
 	}
 }
 
