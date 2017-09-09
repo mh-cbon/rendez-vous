@@ -125,7 +125,6 @@ func (r *PeerNode) Resolve(remote string, addr string, service string, me *ident
 			}
 			return newRemote.String(), nil
 		}
-		log.Printf("%#v\n", res)
 		return res.Data, nil
 	}
 	return addr, nil
