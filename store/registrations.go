@@ -18,7 +18,7 @@ func NewRegistrations(s *Registrations) *TSRegistrations {
 
 // Registrations of peers
 type Registrations struct {
-	Peers []Peer
+	Peers []*Peer
 }
 
 // Peer is an address and a pbk
@@ -33,7 +33,7 @@ type Peer struct {
 
 // Add a peer (remote+pbk)
 func (s *Registrations) Add(address net.Addr, pbk []byte, sign []byte, value string) {
-	p := Peer{time.Now(), address, make([]byte, len(pbk)), make([]byte, len(sign)), value, 0}
+	p := &Peer{time.Now(), address, make([]byte, len(pbk)), make([]byte, len(sign)), value, 0}
 	copy(p.Pbk, pbk)
 	copy(p.Sign, sign)
 	s.Peers = append(s.Peers, p)
@@ -57,7 +57,7 @@ func (s *Registrations) AddUpdate(address net.Addr, pbk []byte, sign []byte, val
 func (s *Registrations) GetByAddr(address string) *Peer {
 	for _, p := range s.Peers {
 		if p.Address.String() == address {
-			return &p
+			return p
 		}
 	}
 	return nil
@@ -67,7 +67,7 @@ func (s *Registrations) GetByAddr(address string) *Peer {
 func (s *Registrations) GetByPbk(pbk []byte) *Peer {
 	for _, p := range s.Peers {
 		if bytes.Equal(p.Pbk, pbk) {
-			return &p
+			return p
 		}
 	}
 	return nil
@@ -118,8 +118,8 @@ func (s *Registrations) HasPbk(pbk []byte) bool {
 }
 
 // Select some peers
-func (s *Registrations) Select(start, limit int) []Peer {
-	var ret []Peer
+func (s *Registrations) Select(start, limit int) []*Peer {
+	var ret []*Peer
 	if start < len(s.Peers) {
 		max := start + limit
 		if max > len(s.Peers) {
@@ -211,7 +211,7 @@ func (s *TSRegistrations) HasPbk(pbk []byte) bool {
 }
 
 // Select some peers
-func (s *TSRegistrations) Select(start, limit int) []Peer {
+func (s *TSRegistrations) Select(start, limit int) []*Peer {
 	s.m.Lock()
 	defer s.m.Unlock()
 	return s.store.Select(start, limit)
