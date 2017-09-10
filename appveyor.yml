@@ -10,6 +10,8 @@ install:
   - DIR C:\
   - DIR C:\Tools
   - DIR C:\Tools\msys64
+  - DIR C:\Tools\msys64\usr
+  - DIR C:\Tools\msys64\usr\bin
   - set PATH=C:\Tools\msys64\usr\bin;%GOPATH%\bin;%PATH%
   - go get -u github.com/jessevdk/go-flags
   - go get -u github.com/elazarl/goproxy
