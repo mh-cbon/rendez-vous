@@ -85,7 +85,7 @@ func main() {
 }
 
 type rendezVousServerCommand struct {
-	Listen string `short:"l" long:"listen" description:"Port to listen" default:"0"`
+	Listen string `short:"l" long:"listen" description:"Port to listen" default:":0"`
 }
 
 func (opts *rendezVousServerCommand) Execute(args []string) error {
@@ -93,7 +93,7 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 		return fmt.Errorf("-listen argument is required")
 	}
 
-	srv := node.NewCentralPointNode("0.0.0.0:" + opts.Listen)
+	srv := node.NewCentralPointNode(opts.Listen)
 	if err := srv.Start(); err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 }
 
 type rendezVousClientCommand struct {
-	Listen string `short:"l" long:"listen" description:"Port to listen" default:"0"`
+	Listen string `short:"l" long:"listen" description:"Port to listen" default:":0"`
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Query  string `short:"q" long:"query" description:"The query verb to run"`
 	Pbk    string `long:"pbk" description:"An ed25519 prublic key - 32 len hex"`
@@ -126,7 +126,7 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 		return fmt.Errorf("-query argument must be one of: %v", model.Verbs)
 	}
 
-	n := node.NewPeerNode("0.0.0.0:" + opts.Listen)
+	n := node.NewPeerNode(opts.Listen)
 	if err := n.Start(); err != nil {
 		return err
 	}
@@ -198,9 +198,9 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 }
 
 type rendezVousWebsiteCommand struct {
-	Listen string `short:"l" long:"listen" description:"Port to listen" default:"0"`
+	Listen string `short:"l" long:"listen" description:"Port to listen" default:":0"`
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
-	Local  string `long:"local" description:"The local port of the website" default:"9005"`
+	Local  string `long:"local" description:"The local port of the website" default:":9005"`
 	Dir    string `long:"dir" description:"The directory of the me.com website" default:"demows"`
 	Pvk    string `long:"pvk" description:"The ed25519 private key - 64 len hex - auto generated if empty"`
 	Value  string `long:"value" description:"The value to sign" default:"website"`
@@ -214,7 +214,7 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 		return fmt.Errorf("-dir argument is required")
 	}
 
-	n := node.NewPeerNode("0.0.0.0:" + opts.Listen)
+	n := node.NewPeerNode(opts.Listen)
 	if err := n.Start(); err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 	ln := n.ServiceListener(opts.Value)
 	handler := http.FileServer(http.Dir(opts.Dir))
 	public := utils.ServeHTTPFromListener(ln, httpServer(handler, "")) //todo: replace with a transparent proxy, so the website can live into another process
-	local := httpServer(handler, "127.0.0.1:"+opts.Local)
+	local := httpServer(handler, opts.Local)
 
 	readyErr := ready(func() error {
 		log.Println("Public Website listening on ", ln.Addr())
@@ -253,7 +253,7 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 
 type rendezVousHTTPCommand struct {
 	URL    string `short:"u" long:"url" description:"URL to execute"`
-	Listen string `short:"l" long:"listen" description:"UTP port to listen" default:"0"`
+	Listen string `short:"l" long:"listen" description:"UTP port to listen" default:":0"`
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Pbk    string `long:"pbk" description:"An ed25519 prublic key - 32 len hex"`
 	Value  string `long:"value" description:"The value to sign" default:"website"`
@@ -271,7 +271,7 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 		return fmt.Errorf("--remote argument is required")
 	}
 
-	n := node.NewPeerNode("0.0.0.0:" + opts.Listen)
+	n := node.NewPeerNode(opts.Listen)
 	if err := n.Start(); err != nil {
 		return err
 	}
@@ -284,9 +284,9 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	httpClient := http.Client{
 		Transport: &http.Transport{
 			Dial: func(network, addr string) (net.Conn, error) {
-				host, err := n.Resolve(opts.Remote, addr, opts.Value, id)
-				if err != nil {
-					return nil, err
+				host, err2 := n.Resolve(opts.Remote, addr, opts.Value, id)
+				if err2 != nil {
+					return nil, err2
 				}
 				return n.Dial(host, opts.Value)
 			},
@@ -305,11 +305,11 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 }
 
 type rendezVousBrowserCommand struct {
-	Listen   string `short:"l" long:"listen" description:"Port to listen" default:"0"`
+	Listen   string `short:"l" long:"listen" description:"Port to listen" default:":0"`
 	Remote   string `short:"r" long:"remote" description:"The rendez-vous address"`
-	Proxy    string `short:"p" long:"proxy" description:"The port of the proxy" default:"9015"`
+	Proxy    string `short:"p" long:"proxy" description:"The port of the proxy" default:"127.0.0.1:9015"`
 	Dir      string `long:"dir" description:"The directory of the website" default:"browser/static/"`
-	Ws       string `short:"w" long:"ws" description:"The port of the website" default:"9016"`
+	Ws       string `short:"w" long:"ws" description:"The port of the website" default:"127.0.0.1:9016"`
 	Headless bool   `long:"headless" description:"Run in headless mode (no-gui)"`
 }
 
@@ -330,16 +330,16 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 		return fmt.Errorf("--dir argument is required")
 	}
 
-	wsAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:"+opts.Ws)
+	wsAddr, err := net.ResolveUDPAddr("udp", opts.Ws)
 	if err != nil {
 		return err
 	}
-	proxyAddr, err := net.ResolveUDPAddr("udp", "127.0.0.1:"+opts.Proxy)
+	proxyAddr, err := net.ResolveUDPAddr("udp", opts.Proxy)
 	if err != nil {
 		return err
 	}
 
-	proxy := browser.NewProxy("0.0.0.0:"+opts.Listen, opts.Remote, wsAddr.String(), proxyAddr.String(), nil)
+	proxy := browser.NewProxy(opts.Listen, opts.Remote, wsAddr.String(), proxyAddr.String(), nil)
 	gateway := httpServer(browser.MakeWebsite(proxy, opts.Dir), wsAddr.String())
 
 	readyErr := ready(func() error {

@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+var srcIP = "127.0.0.1"
+
 func Test1(t *testing.T) {
 	clean()
 	defer clean()
@@ -21,20 +23,20 @@ func Test1(t *testing.T) {
 	}
 
 	t.Run("1", func(t *testing.T) {
-		rv, err := runRendezVous("8070")
+		rv, err := runRendezVous(srcIP + ":8070")
 		if err != nil {
 			t.Fatal(err)
 		}
 		defer rv.Process.Kill()
 		defer rv.Process.Release()
 
-		if err := runPing("0.0.0.0:8070"); err != nil {
+		if err := runPing(srcIP + ":8070"); err != nil {
 			t.Error(err)
 		}
 	})
 
 	t.Run("2", func(t *testing.T) {
-		rv, err := runRendezVous("8090")
+		rv, err := runRendezVous(srcIP + ":8090")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -42,26 +44,26 @@ func Test1(t *testing.T) {
 		defer rv.Process.Release()
 
 		pvk := "504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12"
-		ws, err := runWebsite("0.0.0.0:8090", "8091", "8092", pvk)
+		ws, err := runWebsite(srcIP+":8090", srcIP+":8091", srcIP+":8092", pvk)
 		if err != nil {
 			t.Error(err)
 		}
 		defer ws.Process.Kill()
 		defer ws.Process.Release()
 
-		err = runHttpGet("0.0.0.0:8090", "http://127.0.0.1:8091/index.html")
+		err = runHttpGet(srcIP+":8090", "http://127.0.0.1:8091/index.html")
 		if err != nil {
 			t.Error(err)
 		}
 
-		err = runHttpGet("0.0.0.0:8090", "http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html")
+		err = runHttpGet(srcIP+":8090", "http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html")
 		if err != nil {
 			t.Error(err)
 		}
 	})
 
 	t.Run("3", func(t *testing.T) {
-		rv, err := runRendezVous("8080")
+		rv, err := runRendezVous(srcIP + ":8080")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -69,14 +71,14 @@ func Test1(t *testing.T) {
 		defer rv.Process.Release()
 
 		pvk := "504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12"
-		ws, err := runWebsite("0.0.0.0:8080", "8081", "8082", pvk)
+		ws, err := runWebsite(srcIP+":8080", srcIP+":8081", srcIP+":8082", pvk)
 		if err != nil {
 			t.Error(err)
 		}
 		defer ws.Process.Kill()
 		defer ws.Process.Release()
 
-		bw, err := runBrowser("0.0.0.0:8080", "8083", "8084", "8085")
+		bw, err := runBrowser(srcIP+":8080", srcIP+":8083", srcIP+":8084", srcIP+":8085")
 		if err != nil {
 			t.Error(err)
 		}

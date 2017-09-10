@@ -13,7 +13,6 @@ func FromAddr(address string) (Socket, error) {
 	if err != nil {
 		return nil, err
 	}
-	logger.Info("listening on ", udpAddr.String())
 	conn, err := net.ListenUDP(protocol, udpAddr)
 	if err != nil {
 		return nil, err
