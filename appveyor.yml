@@ -1,6 +1,9 @@
 image:
 - Visual Studio 2017
 
+environment:
+  GOPATH: c:\gopath
+
 install:
   # - choco install make
   # specific to go
@@ -10,8 +13,7 @@ install:
   - set PATH=C:\msys64\mingw64\bin;;%PATH%
   - set PATH=%GOPATH%\bin;%PATH%
   - go get -u github.com/mh-cbon/never-fail
-  - go install github.com/mh-cbon/never-fail
-  - dir %GOPATH%\bin
+  - never-fail go get -v -u -a -x github.com/anacrolix/go-libutp
   # - go get -u github.com/jessevdk/go-flags
   # - go get -u github.com/elazarl/goproxy
   # - go get -u github.com/bradfitz/iter
@@ -26,6 +28,5 @@ install:
 #   - set PATH=C:\MinGW\bin;%PATH%
 
 build_script:
-  - never-fail go get -v -u -a -x github.com/anacrolix/go-libutp
   - go test
   - go run main.go
