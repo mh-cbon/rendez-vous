@@ -8,7 +8,7 @@ install:
   # specific to go
   # - echo %PATH%
   # - set PATH=C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
-  - choco install mingw
+  - choco install mingw --x86
   - refreshenv
   - DIR C:\
   - go get -u github.com/jessevdk/go-flags
