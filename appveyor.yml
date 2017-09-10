@@ -11,3 +11,5 @@ install:
 test_script:
   - go test
   - go run main.go
+
+build: off
