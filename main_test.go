@@ -13,8 +13,9 @@ import (
 	"time"
 )
 
-var srcIP = "0.0.0.0" // something does not work on appveyor with this ip
-var dstIP = "127.0.0.1"
+var srcIP = "0.0.0.0"
+var dstIP = "127.0.0.1" // on windows, never write to 0.0.0.0:... or :..., it will fail with an error such
+// ... write udp [::]:50929->:8070: wsasendto: The requested address is not valid in its context.
 
 func Test1(t *testing.T) {
 	clean()
