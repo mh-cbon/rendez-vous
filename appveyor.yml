@@ -3,10 +3,10 @@ image:
 
 install:
   # - choco install make
-  # - choco install msys2
-  # - refreshenv
+  - choco install msys2
+  - refreshenv
   # specific to go
-  # - echo %PATH%
+  - echo %PATH%
   - DIR C:\
   - DIR C:\Tools
   # - set PATH=C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
