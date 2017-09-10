@@ -142,7 +142,7 @@ func build() error {
 }
 func clean() error {
 	exec.Command("killall", exeFile).Run()
-	t := exec.Command("cmd", "/C", "taskkill", "/v")
+	t := exec.Command("cmd", "/C", "taskkill", "/V")
 	t.Stdout = os.Stdout
 	t.Stderr = os.Stdout
 	err := t.Run()
