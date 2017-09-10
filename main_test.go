@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// var srcIP = "0.0.0.0" // something does not work on appveyor with this ip
-var srcIP = "127.0.0.1"
+var srcIP = "0.0.0.0" // something does not work on appveyor with this ip
+// var srcIP = "127.0.0.1"
 
 func Test1(t *testing.T) {
 	clean()

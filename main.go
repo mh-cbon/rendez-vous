@@ -85,7 +85,7 @@ func main() {
 }
 
 type rendezVousServerCommand struct {
-	Listen string `short:"l" long:"listen" description:"Port to listen" default:":0"`
+	Listen string `short:"l" long:"listen" description:"Port to listen" default:"0.0.0.0:0"`
 }
 
 func (opts *rendezVousServerCommand) Execute(args []string) error {
@@ -106,7 +106,7 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 }
 
 type rendezVousClientCommand struct {
-	Listen string `short:"l" long:"listen" description:"Port to listen" default:":0"`
+	Listen string `short:"l" long:"listen" description:"Port to listen" default:"0.0.0.0:0"`
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Query  string `short:"q" long:"query" description:"The query verb to run"`
 	Pbk    string `long:"pbk" description:"An ed25519 prublic key - 32 len hex"`
@@ -198,7 +198,7 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 }
 
 type rendezVousWebsiteCommand struct {
-	Listen string `short:"l" long:"listen" description:"Port to listen" default:":0"`
+	Listen string `short:"l" long:"listen" description:"Port to listen" default:"0.0.0.0:0"`
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Local  string `long:"local" description:"The local port of the website" default:":9005"`
 	Dir    string `long:"dir" description:"The directory of the me.com website" default:"demows"`
@@ -253,7 +253,7 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 
 type rendezVousHTTPCommand struct {
 	URL    string `short:"u" long:"url" description:"URL to execute"`
-	Listen string `short:"l" long:"listen" description:"UTP port to listen" default:":0"`
+	Listen string `short:"l" long:"listen" description:"UTP port to listen" default:"0.0.0.0:0"`
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Pbk    string `long:"pbk" description:"An ed25519 prublic key - 32 len hex"`
 	Value  string `long:"value" description:"The value to sign" default:"website"`
@@ -305,7 +305,7 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 }
 
 type rendezVousBrowserCommand struct {
-	Listen   string `short:"l" long:"listen" description:"Port to listen" default:":0"`
+	Listen   string `short:"l" long:"listen" description:"Port to listen" default:"0.0.0.0:0"`
 	Remote   string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Proxy    string `short:"p" long:"proxy" description:"The port of the proxy" default:"127.0.0.1:9015"`
 	Dir      string `long:"dir" description:"The directory of the website" default:"browser/static/"`
