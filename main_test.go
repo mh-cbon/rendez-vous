@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var srcIP = "127.0.0.1"
+var srcIP = "0.0.0.0"
 
 func Test1(t *testing.T) {
 	clean()
