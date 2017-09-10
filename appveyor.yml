@@ -2,8 +2,12 @@ image:
 - Visual Studio 2017
 
 install:
-  - choco install make
-  - refreshenv
+  - DIR C:\msys64\
+  - DIR C:\msys64\usr\bin
+  - DIR C:\MinGW\
+  - DIR C:\MinGW\bin
+  # - choco install make
+  # - refreshenv
   # specific to go
   - set PATH=%GOPATH%\bin;%PATH%
   - go get -u github.com/jessevdk/go-flags
@@ -21,10 +25,6 @@ install:
 #   - set PATH=C:\MinGW\bin;%PATH%
 
 build_script:
-  - DIR C:\msys64\
-  - DIR C:\msys64\usr\bin
-  - DIR C:\MinGW\
-  - DIR C:\MinGW\bin
   - SET PATH=C:\msys64\mingw64\bin;%PATH%;C:\msys64\usr\bin
   - go test
   - go run main.go
