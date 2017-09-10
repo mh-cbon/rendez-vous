@@ -19,7 +19,7 @@ install:
   - go get -u github.com/bradfitz/iter
   - go get -u github.com/gorilla/mux
   - go get -u github.com/golang/protobuf/proto
-  - go get -u github.com/anacrolix/torrent
+  - go get -u github.com/anacrolix/torrent/bencode
   - go get -u github.com/anacrolix/missinggo
 
 # before_build:
