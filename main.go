@@ -93,7 +93,7 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 		return fmt.Errorf("-listen argument is required")
 	}
 
-	srv := node.NewCentralPointNode(":" + opts.Listen)
+	srv := node.NewCentralPointNode("0.0.0.0:" + opts.Listen)
 	if err := srv.Start(); err != nil {
 		return err
 	}
@@ -126,7 +126,7 @@ func (opts *rendezVousClientCommand) Execute(args []string) error {
 		return fmt.Errorf("-query argument must be one of: %v", model.Verbs)
 	}
 
-	n := node.NewPeerNode(":" + opts.Listen)
+	n := node.NewPeerNode("0.0.0.0:" + opts.Listen)
 	if err := n.Start(); err != nil {
 		return err
 	}
@@ -214,7 +214,7 @@ func (opts *rendezVousWebsiteCommand) Execute(args []string) error {
 		return fmt.Errorf("-dir argument is required")
 	}
 
-	n := node.NewPeerNode(":" + opts.Listen)
+	n := node.NewPeerNode("0.0.0.0:" + opts.Listen)
 	if err := n.Start(); err != nil {
 		return err
 	}
@@ -339,7 +339,7 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 		return err
 	}
 
-	proxy := browser.NewProxy(":"+opts.Listen, opts.Remote, wsAddr.String(), proxyAddr.String(), nil)
+	proxy := browser.NewProxy("0.0.0.0:"+opts.Listen, opts.Remote, wsAddr.String(), proxyAddr.String(), nil)
 	gateway := httpServer(browser.MakeWebsite(proxy, opts.Dir), wsAddr.String())
 
 	readyErr := ready(func() error {
