@@ -134,7 +134,7 @@ func (r *PeerNode) Dial(addr string, svc string) (net.Conn, error) {
 	id := []byte(fmt.Sprintf("%v:%v", len(svc), svc))
 	conn, err := r.PacketConn().Dial(addr)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("dial: " + err.Error())
 	}
 	_, err = conn.Write(id)
 	if err != nil {
