@@ -15,6 +15,7 @@ install:
   - go get -u github.com/golang/protobuf/proto
   - go get -u github.com/anacrolix/torrent/bencode
   - go get -u github.com/anacrolix/missinggo
+  - go get -u github.com/asdine/storm
   - go get -u github.com/mh-cbon/rendez-vous
 
 build_script:

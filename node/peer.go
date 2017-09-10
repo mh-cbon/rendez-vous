@@ -138,6 +138,7 @@ func (r *PeerNode) Dial(addr string, svc string) (net.Conn, error) {
 	if err != nil {
 		return nil, errors.New("dial: " + err.Error())
 	}
+	// todo: implement challenge of the remote here. need to receieve the extra pbk key associated with the dial request
 	_, err = conn.Write(id)
 	if err != nil {
 		conn.Close()
@@ -171,6 +172,7 @@ type serviceListener struct {
 func (s *serviceListener) Accept() (net.Conn, error) {
 	conn, err := s.Listener.Accept()
 	if err == nil {
+		// todo: implement challenge of the remote here. need to receieve the extra pbk key of the node receiving incoming conn
 		b := make([]byte, len(s.id))
 		n, err2 := conn.Read(b)
 		if err != nil {

@@ -49,7 +49,13 @@ func main() {
 		os.Exit(0)
 	}
 
-	var cmds = flags.NewNamedParser("commands", flags.Default)
+	var cmds = flags.NewNamedParser("rendez-vous", flags.Default)
+	cmds.ShortDescription = ""
+	cmds.AddCommand("wsadmin",
+		"Run the backend server without node",
+		"The wsadmin command initialize a rendez-vous admin website which peers can use to administrate their rendez-vous node.",
+		&rendezVousWsAdminCommand{})
+
 	cmds.AddCommand("serve",
 		"Run rendez-vous server",
 		"The serve command initialize a rendez-vous server which peers can use to register/unregister/find.",
@@ -103,6 +109,70 @@ func (opts *rendezVousServerCommand) Execute(args []string) error {
 
 	done := make(chan error)
 	go handleSignal(done, srv.Close)
+	return <-done
+}
+
+type rendezVousBrowserCommand struct {
+	Listen   string `short:"l" long:"listen" description:"Port to listen" default:"0.0.0.0:0"`
+	Remote   string `short:"r" long:"remote" description:"The rendez-vous address"`
+	Proxy    string `short:"p" long:"proxy" description:"The port of the proxy" default:"127.0.0.1:9015"`
+	Dir      string `long:"dir" description:"The directory of the website" default:"admin/static/"`
+	Ws       string `short:"w" long:"ws" description:"The port of the website" default:"127.0.0.1:9016"`
+	Headless bool   `long:"headless" description:"Run in headless mode (no-gui)"`
+	DbFile   string `long:"db" description:"The path to the database file." default:"admin/db.bolt"`
+}
+
+func (opts *rendezVousBrowserCommand) Execute(args []string) error {
+	if opts.Listen == "" {
+		return fmt.Errorf("--listen argument is required")
+	}
+	if opts.Remote == "" {
+		return fmt.Errorf("--remote argument is required")
+	}
+	if opts.Proxy == "" {
+		return fmt.Errorf("--proxy argument is required")
+	}
+	if opts.Ws == "" {
+		return fmt.Errorf("--ws argument is required")
+	}
+	if opts.Dir == "" {
+		return fmt.Errorf("--dir argument is required")
+	}
+
+	wsAddr, err := net.ResolveUDPAddr("udp", opts.Ws)
+	if err != nil {
+		return err
+	}
+	proxyAddr, err := net.ResolveUDPAddr("udp", opts.Proxy)
+	if err != nil {
+		return err
+	}
+
+	proxy := browser.NewProxy(opts.Listen, opts.Remote, wsAddr.String(), proxyAddr.String(), nil)
+	admin := admin.New(opts.Ws, opts.DbFile, opts.Dir, proxy)
+
+	readyErr := ready(func() error {
+		log.Println("me.com server listening on", wsAddr.String())
+		log.Println("browser proxy listening on", proxyAddr.String())
+
+		if opts.Headless == false {
+			cmd := exec.Command("chromium-browser", "--proxy-server="+proxyAddr.String(), "http://me.com")
+			if err := cmd.Start(); err != nil {
+				return err
+			}
+			cmd.Process.Release()
+		}
+
+		status := proxy.TestPort()
+		log.Println("port", status.Num(), " is open:", status.Open())
+
+		return nil
+	}, proxy.ListenAndServe, admin.ListenAndServe)
+	if readyErr != nil {
+		return readyErr
+	}
+	done := make(chan error)
+	go handleSignal(done, proxy.Close, admin.Close)
 	return <-done
 }
 
@@ -305,66 +375,29 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 	return nil
 }
 
-type rendezVousBrowserCommand struct {
-	Listen   string `short:"l" long:"listen" description:"Port to listen" default:"0.0.0.0:0"`
-	Remote   string `short:"r" long:"remote" description:"The rendez-vous address"`
-	Proxy    string `short:"p" long:"proxy" description:"The port of the proxy" default:"127.0.0.1:9015"`
-	Dir      string `long:"dir" description:"The directory of the website" default:"browser/static/"`
-	Ws       string `short:"w" long:"ws" description:"The port of the website" default:"127.0.0.1:9016"`
-	Headless bool   `long:"headless" description:"Run in headless mode (no-gui)"`
+type rendezVousWsAdminCommand struct {
+	Listen string `short:"l" long:"listen" description:"HTTP/tcp port to listen" default:"127.0.0.1:9065"`
+	Dir    string `long:"dir" description:"The directory of the website" default:"admin/static/"`
+	DbFile string `long:"db" description:"The path to the database file." default:"admin/db.bolt"`
 }
 
-func (opts *rendezVousBrowserCommand) Execute(args []string) error {
+func (opts *rendezVousWsAdminCommand) Execute(args []string) error {
 	if opts.Listen == "" {
 		return fmt.Errorf("--listen argument is required")
 	}
-	if opts.Remote == "" {
-		return fmt.Errorf("--remote argument is required")
-	}
-	if opts.Proxy == "" {
-		return fmt.Errorf("--proxy argument is required")
-	}
-	if opts.Ws == "" {
-		return fmt.Errorf("--ws argument is required")
-	}
-	if opts.Dir == "" {
-		return fmt.Errorf("--dir argument is required")
-	}
 
-	wsAddr, err := net.ResolveUDPAddr("udp", opts.Ws)
-	if err != nil {
-		return err
-	}
-	proxyAddr, err := net.ResolveUDPAddr("udp", opts.Proxy)
-	if err != nil {
-		return err
-	}
-
-	proxy := browser.NewProxy(opts.Listen, opts.Remote, wsAddr.String(), proxyAddr.String(), nil)
-	gateway := httpServer(admin.MakeWebsite(proxy, opts.Dir), wsAddr.String())
+	admin := admin.New(opts.Listen, opts.DbFile, opts.Dir, nil)
 
 	readyErr := ready(func() error {
-		log.Println("me.com server listening on", wsAddr.String())
-		log.Println("browser proxy listening on", proxyAddr.String())
-
-		if opts.Headless == false {
-			cmd := exec.Command("chromium-browser", "--proxy-server="+proxyAddr.String(), "http://me.com")
-			if err := cmd.Start(); err != nil {
-				return err
-			}
-			cmd.Process.Release()
-		}
-
-		status := proxy.TestPort()
-		log.Println("port", status.Num(), " is open:", status.Open())
+		log.Println("wsadmin server listening on", opts.Listen)
 
 		return nil
-	}, proxy.ListenAndServe, gateway.ListenAndServe)
+	}, admin.ListenAndServe)
 	if readyErr != nil {
 		return readyErr
 	}
 	done := make(chan error)
-	go handleSignal(done, proxy.Close, gateway.Close)
+	go handleSignal(done, admin.Close)
 	return <-done
 }
 

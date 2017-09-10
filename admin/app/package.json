@@ -1,0 +1,20 @@
+{
+  "name": "static",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "start": "watch 'browserify main.js > ../static/app.js' . -p=/node_modules/ -d",
+    "build": "cp node_modules/jquery/dist/jquery.min.js ../static/jquery.min.js && cd semantic && gulp build"
+  },
+  "keywords": [],
+  "author": "mh-cbon <mh-cbon@users.noreply.github.com>",
+  "license": "MIT",
+  "dependencies": {
+    "hyperx": "^2.3.0",
+    "jquery": "^3.2.1",
+    "main-loop": "^3.4.0",
+    "semantic-ui": "^2.2.13",
+    "virtual-dom": "^2.1.1"
+  }
+}
