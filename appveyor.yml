@@ -2,15 +2,13 @@ image:
 - Visual Studio 2017
 
 install:
-  - DIR C:\
   # - choco install make
   # - refreshenv
   # specific to go
   # - echo %PATH%
   # - set PATH=C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
-  - choco install mingw --x86
-  - refreshenv
-  - DIR C:\
+  - curl -fsS -o tdm-gcc-4.9.2.exe http://downloads.sourceforge.net/project/tdm-gcc/TDM-GCC%20Installer/tdm-gcc-4.9.2.exe
+  - tdm-gcc-4.9.2.exe
   - go get -u github.com/jessevdk/go-flags
   - go get -u github.com/elazarl/goproxy
   - go get -u github.com/bradfitz/iter
