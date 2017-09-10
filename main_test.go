@@ -79,7 +79,7 @@ func Test1(t *testing.T) {
 		defer ws.Process.Kill()
 		defer ws.Process.Release()
 
-		bw, err := runBrowser(srcIP+":8080", srcIP+":8083", srcIP+":8084", srcIP+":8085")
+		bw, err := runBrowser(dstIP+":8080", srcIP+":8083", srcIP+":8084", srcIP+":8085")
 		if err != nil {
 			t.Error(err)
 		}

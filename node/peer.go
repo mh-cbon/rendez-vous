@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"runtime"
 	"strings"
 
 	"github.com/mh-cbon/rendez-vous/client"
@@ -124,20 +123,10 @@ func (r *PeerNode) Resolve(remote string, addr string, service string, me *ident
 			if err2 != nil {
 				return "", fmt.Errorf("knock failure: %v", err2.Error())
 			}
-			remote := newRemote.String() //todo: figure out.
-			u := strings.Split(remote, ":")
-			if runtime.GOOS == "windows" && len(u) == 2 && u[0] == "0.0.0.0" {
-				remote = "127.0.0.1:" + u[1]
-			}
-			log.Println(u, remote, newRemote.String())
+			remote := newRemote.String()
 			return remote, nil
 		}
-		remote := res.Data //todo: figure out.
-		u := strings.Split(remote, ":")
-		if runtime.GOOS == "windows" && len(u) == 2 && u[0] == "0.0.0.0" {
-			remote = "127.0.0.1:" + u[1]
-		}
-		log.Println(u, remote, res.Data)
+		remote := res.Data
 		return remote, nil
 	}
 	return addr, nil
