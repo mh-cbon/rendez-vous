@@ -45,7 +45,7 @@ func Test1(t *testing.T) {
 		defer rv.Process.Release()
 
 		pvk := "504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12"
-		ws, err := runWebsite(srcIP+":8090", srcIP+":8091", srcIP+":8092", pvk)
+		ws, err := runWebsite(dstIP+":8090", srcIP+":8091", srcIP+":8092", pvk)
 		if err != nil {
 			t.Error(err)
 		}
@@ -72,7 +72,7 @@ func Test1(t *testing.T) {
 		defer rv.Process.Release()
 
 		pvk := "504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12"
-		ws, err := runWebsite(srcIP+":8080", srcIP+":8081", srcIP+":8082", pvk)
+		ws, err := runWebsite(dstIP+":8080", srcIP+":8081", srcIP+":8082", pvk)
 		if err != nil {
 			t.Error(err)
 		}
