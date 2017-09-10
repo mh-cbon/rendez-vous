@@ -2,12 +2,17 @@ image:
 - Visual Studio 2017
 
 install:
-  - DIR C:\Tools
+  - DIR C:\
+  - rmdir /s /q C:\cygwin
+  - rmdir /s /q C:\cygwin64
   # - choco install make
   # - refreshenv
   # specific to go
-  - echo %PATH%
-  - set PATH=C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
+  # - echo %PATH%
+  # - set PATH=C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
+  - choco install mingw
+  - refreshenv
+  - DIR C:\
   - go get -u github.com/jessevdk/go-flags
   - go get -u github.com/elazarl/goproxy
   - go get -u github.com/bradfitz/iter
