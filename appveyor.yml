@@ -10,6 +10,8 @@ install:
   - set PATH=C:\msys64\mingw64\bin;;%PATH%
   - set PATH=%GOPATH%\bin;%PATH%
   - go get -u github.com/mh-cbon/never-fail
+  - go install github.com/mh-cbon/never-fail
+  - dir %GOPATH%\bin
   # - go get -u github.com/jessevdk/go-flags
   # - go get -u github.com/elazarl/goproxy
   # - go get -u github.com/bradfitz/iter
