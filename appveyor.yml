@@ -14,13 +14,13 @@ install:
   - set PATH=%GOPATH%\bin;%PATH%
   - go get -u github.com/mh-cbon/never-fail
   - never-fail go get -v -u -a -x github.com/anacrolix/go-libutp
-  # - go get -u github.com/jessevdk/go-flags
-  # - go get -u github.com/elazarl/goproxy
-  # - go get -u github.com/bradfitz/iter
-  # - go get -u github.com/gorilla/mux
-  # - go get -u github.com/golang/protobuf/proto
-  # - go get -u github.com/anacrolix/torrent
-  # - go get -u github.com/anacrolix/missinggo
+  - go get -u github.com/jessevdk/go-flags
+  - go get -u github.com/elazarl/goproxy
+  - go get -u github.com/bradfitz/iter
+  - go get -u github.com/gorilla/mux
+  - go get -u github.com/golang/protobuf/proto
+  - go get -u github.com/anacrolix/torrent
+  - go get -u github.com/anacrolix/missinggo
 
 # before_build:
 #   # Workaround for CMake not wanting sh.exe on PATH for MinGW
