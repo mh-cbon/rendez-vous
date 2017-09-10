@@ -26,48 +26,90 @@ Available commands:
 #### $ go test -v
 ```sh
 === RUN   Test1
+2017/09/10 20:10:09 tasklist <nil>
+2017/09/10 20:10:09 taskkill /f <nil>
 === RUN   Test1/1
-go run main.go serve -l 8070
-2017/09/05 17:14:41 Listening... :8070
-go run main.go client -q ping -r :8070
-2017/09/05 17:14:42 [::]:53347       snd :8070           : txid=1      len=10   "\n\x04ping"
-2017/09/05 17:14:42 [::]:8070        rcv [::1]:53347     : txid=1      len=10   "\n\x04ping"
-2017/09/05 17:14:42 [::]:8070        snd [::1]:53347     : txid=1      len=20   "\x10\xc8\x012\v[::1]:53347"
-2017/09/05 17:14:42 [::]:53347       rcv [::1]:8070      : txid=1      len=20   "\x10\xc8\x012\v[::1]:53347"
-model.Message{Query:"", Code:200, Pbk:[]uint8(nil), Sign:[]uint8(nil), Value:"", Address:"[::1]:53347", Response:""}
+go run main.go serve -l 0.0.0.0:8070
+2017/09/10 20:10:10 Listening... [::]:8070
+go run main.go client -q ping -r 127.0.0.1:8070
+2017/09/10 20:10:11 [::]:35387       snd 127.0.0.1:8070  : txid=1      len=16   "{\"q\":\"ping\"}"
+2017/09/10 20:10:11 [::]:8070        rcv 127.0.0.1:35387 : txid=1      len=16   "{\"q\":\"ping\"}"
+2017/09/10 20:10:11 [::]:8070        snd 127.0.0.1:35387 : txid=1      len=35   "{\"c\":200,\"a\":\"127.0.0.1:35387\"}"
+2017/09/10 20:10:11 [::]:35387       rcv 127.0.0.1:8070  : txid=1      len=35   "{\"c\":200,\"a\":\"127.0.0.1:35387\"}"
+model.Message{Query:"", Code:200, Pbk:[]uint8(nil), Sign:[]uint8(nil), Value:"", Address:"127.0.0.1:35387", Data:"", Token:"", PortStatus:0, Peers:[]*model.Peer(nil), Start:0, Limit:0}
 === RUN   Test1/2
-go run main.go serve -l 8090
-2017/09/05 17:14:42 Listening... :8090
-go run main.go website -r :8090 -l 8091 --local 8092 --pvk 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e --dir demows
-2017/09/05 17:14:43 Public Website listening on  [::]:8091
-2017/09/05 17:14:43 Local Website listening on  127.0.0.1:8092
-pvk= 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e
-pbk= b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74
-sig= cc273ddc49feed05551cc891c1b6bbc86974e63a4974812525929453beb7e917fed3d1b583b9d81bfe7cab9e1d15c092c24ea7764f18d1bef1e048744ed6770b
-2017/09/05 17:14:43 [::]:8091        snd :8090           : txid=1      len=109  "\n\x03reg\x1a \xb6\xb8\x117H\xfe\a\x95e\x8f\xa9֫>6\xd2}r\xe9{}\xf4\a\xe7\xa8\b\ra\xec@]t\"@\xcc'=\xdcI\xfe\xed\x05U\x1cȑ\xc1\xb6\xbb\xc8it\xe6:It\x81%%\x92\x94S\xbe\xb7\xe9\x17\xfe\xd3ѵ\x83\xb9\xd8\x1b\xfe|\xab\x9e\x1d\x15\xc0\x92\xc2N\xa7vO\x18Ѿ\xf1\xe0HtN\xd6w\v"
-2017/09/05 17:14:43 [::]:8090        rcv [::1]:8091      : txid=1      len=109  "\n\x03reg\x1a \xb6\xb8\x117H\xfe\a\x95e\x8f\xa9֫>6\xd2}r\xe9{}\xf4\a\xe7\xa8\b\ra\xec@]t\"@\xcc'=\xdcI\xfe\xed\x05U\x1cȑ\xc1\xb6\xbb\xc8it\xe6:It\x81%%\x92\x94S\xbe\xb7\xe9\x17\xfe\xd3ѵ\x83\xb9\xd8\x1b\xfe|\xab\x9e\x1d\x15\xc0\x92\xc2N\xa7vO\x18Ѿ\xf1\xe0HtN\xd6w\v"
-2017/09/05 17:14:43 [::]:8090        snd [::1]:8091      : txid=1      len=19   "\x10\xc8\x012\n[::1]:8091"
-2017/09/05 17:14:43 [::]:8091        rcv [::1]:8090      : txid=1      len=19   "\x10\xc8\x012\n[::1]:8091"
-2017/09/05 17:14:43 registration  { 200 [] []  [::1]:8091 }
-go run main.go http --url http://127.0.0.1:8091/index.html
+go run main.go serve -l 0.0.0.0:8090
+2017/09/10 20:10:11 Listening... [::]:8090
+go run main.go website -r 127.0.0.1:8090 -l 0.0.0.0:8091 --local 0.0.0.0:8092 --pvk 504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12 --dir demows
+2017/09/10 20:10:12 [::]:8091        snd 127.0.0.1:8090  : txid=1      len=175  "{\"q\":\"reg\",\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"s\":\"pQ7EVE7h8c3Z6wRHoVGsDiMr51gzwG8w3aQot62sp9oKX9ej8aEJ+bm901IugJMHs1xWXW0KQ+LqwnvIhgIXCw==\",\"v\":\"website\"}"
+2017/09/10 20:10:12 [::]:8090        rcv 127.0.0.1:8091  : txid=1      len=175  "{\"q\":\"reg\",\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"s\":\"pQ7EVE7h8c3Z6wRHoVGsDiMr51gzwG8w3aQot62sp9oKX9ej8aEJ+bm901IugJMHs1xWXW0KQ+LqwnvIhgIXCw==\",\"v\":\"website\"}"
+2017/09/10 20:10:12 [::]:8090        snd 127.0.0.1:8091  : txid=1      len=34   "{\"c\":200,\"a\":\"127.0.0.1:8091\"}"
+2017/09/10 20:10:12 [::]:8091        rcv 127.0.0.1:8090  : txid=1      len=34   "{\"c\":200,\"a\":\"127.0.0.1:8091\"}"
+2017/09/10 20:10:12 Public Website listening on  [::]:8091
+2017/09/10 20:10:12 Local Website listening on  0.0.0.0:8092
+pvk= 504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12
+pbk= 78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12
+sig= a50ec4544ee1f1cdd9eb0447a151ac0e232be75833c06f30dda428b7adaca7da0a5fd7a3f1a109f9b9bdd3522e809307b35c565d6d0a43e2eac27bc88602170b
+2017/09/10 20:10:12 [::]:8091        snd 127.0.0.1:8090  : txid=2      len=33   "{\"q\":\"testport\",\"t\":\"random\"}"
+2017/09/10 20:10:12 [::]:8090        rcv 127.0.0.1:8091  : txid=2      len=33   "{\"q\":\"testport\",\"t\":\"random\"}"
+2017/09/10 20:10:12 [::]:56853       snd 127.0.0.1:8091  : txid=1      len=54   "{\"q\":\"porttest\",\"a\":\"127.0.0.1:8091\",\"t\":\"random\"}"
+2017/09/10 20:10:12 [::]:8091        rcv 127.0.0.1:56853 : txid=1      len=54   "{\"q\":\"porttest\",\"a\":\"127.0.0.1:8091\",\"t\":\"random\"}"
+2017/09/10 20:10:12 porttest q:  127.0.0.1:56853 random
+2017/09/10 20:10:12 porttest success
+2017/09/10 20:10:12 [::]:8091        snd 127.0.0.1:56853 : txid=1      len=48   "{\"c\":200,\"a\":\"127.0.0.1:56853\",\"d\":\"random\"}"
+2017/09/10 20:10:12 [::]:56853       rcv 127.0.0.1:8091  : txid=1      len=48   "{\"c\":200,\"a\":\"127.0.0.1:56853\",\"d\":\"random\"}"
+2017/09/10 20:10:12 { 200 [] []  127.0.0.1:56853 random  0 [] 0 0}
+go run main.go http --url http://127.0.0.1:8091/index.html --remote 127.0.0.1:8090
 A demo website.
 <img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?1" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?2" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?3" />
+go run main.go http --url http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html --remote 127.0.0.1:8090
+2017/09/10 20:10:13 [::]:57327       snd 127.0.0.1:8090  : txid=1      len=81   "{\"q\":\"find\",\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"v\":\"website\"}"
+2017/09/10 20:10:13 [::]:8090        rcv 127.0.0.1:57327 : txid=1      len=81   "{\"q\":\"find\",\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"v\":\"website\"}"
+2017/09/10 20:10:13 [::]:8090        snd 127.0.0.1:57327 : txid=1      len=222  "{\"c\":200,\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"s\":\"pQ7EVE7h8c3Z6wRHoVGsDiMr51gzwG8w3aQot62sp9oKX9ej8aEJ+bm901IugJMHs1xWXW0KQ+LqwnvIhgIXCw==\",\"v\":\"website\",\"a\":\"127.0.0.1:57327\",\"d\":\"127.0.0.1:8091\",\"u\":1}"
+2017/09/10 20:10:13 [::]:57327       rcv 127.0.0.1:8090  : txid=1      len=222  "{\"c\":200,\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"s\":\"pQ7EVE7h8c3Z6wRHoVGsDiMr51gzwG8w3aQot62sp9oKX9ej8aEJ+bm901IugJMHs1xWXW0KQ+LqwnvIhgIXCw==\",\"v\":\"website\",\"a\":\"127.0.0.1:57327\",\"d\":\"127.0.0.1:8091\",\"u\":1}"
+A demo website.
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?1" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?2" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?3" />
 === RUN   Test1/3
-go run main.go serve -l 8080
-2017/09/05 17:14:44 Listening... :8080
-go run main.go website -r :8080 -l 8081 --local 8082 --pvk 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e --dir demows
-2017/09/05 17:14:45 Public Website listening on  [::]:8081
-2017/09/05 17:14:45 Local Website listening on  127.0.0.1:8082
-pvk= 202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e
-pbk= b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74
-sig= cc273ddc49feed05551cc891c1b6bbc86974e63a4974812525929453beb7e917fed3d1b583b9d81bfe7cab9e1d15c092c24ea7764f18d1bef1e048744ed6770b
-2017/09/05 17:14:45 [::]:8081        snd :8080           : txid=1      len=109  "\n\x03reg\x1a \xb6\xb8\x117H\xfe\a\x95e\x8f\xa9֫>6\xd2}r\xe9{}\xf4\a\xe7\xa8\b\ra\xec@]t\"@\xcc'=\xdcI\xfe\xed\x05U\x1cȑ\xc1\xb6\xbb\xc8it\xe6:It\x81%%\x92\x94S\xbe\xb7\xe9\x17\xfe\xd3ѵ\x83\xb9\xd8\x1b\xfe|\xab\x9e\x1d\x15\xc0\x92\xc2N\xa7vO\x18Ѿ\xf1\xe0HtN\xd6w\v"
-2017/09/05 17:14:45 [::]:8080        rcv [::1]:8081      : txid=1      len=109  "\n\x03reg\x1a \xb6\xb8\x117H\xfe\a\x95e\x8f\xa9֫>6\xd2}r\xe9{}\xf4\a\xe7\xa8\b\ra\xec@]t\"@\xcc'=\xdcI\xfe\xed\x05U\x1cȑ\xc1\xb6\xbb\xc8it\xe6:It\x81%%\x92\x94S\xbe\xb7\xe9\x17\xfe\xd3ѵ\x83\xb9\xd8\x1b\xfe|\xab\x9e\x1d\x15\xc0\x92\xc2N\xa7vO\x18Ѿ\xf1\xe0HtN\xd6w\v"
-2017/09/05 17:14:45 [::]:8080        snd [::1]:8081      : txid=1      len=19   "\x10\xc8\x012\n[::1]:8081"
-2017/09/05 17:14:45 [::]:8081        rcv [::1]:8080      : txid=1      len=19   "\x10\xc8\x012\n[::1]:8081"
-2017/09/05 17:14:45 registration  { 200 [] []  [::1]:8081 }
-go run main.go browser -r :8080 -l 8083 --ws 8085 --proxy 8084 --headless
-2017/09/05 17:14:46 me.com server listening on 127.0.0.1:8085
+go run main.go serve -l 0.0.0.0:8080
+2017/09/10 20:10:13 Listening... [::]:8080
+go run main.go website -r 127.0.0.1:8080 -l 0.0.0.0:8081 --local 0.0.0.0:8082 --pvk 504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12 --dir demows
+2017/09/10 20:10:14 [::]:8081        snd 127.0.0.1:8080  : txid=1      len=175  "{\"q\":\"reg\",\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"s\":\"pQ7EVE7h8c3Z6wRHoVGsDiMr51gzwG8w3aQot62sp9oKX9ej8aEJ+bm901IugJMHs1xWXW0KQ+LqwnvIhgIXCw==\",\"v\":\"website\"}"
+2017/09/10 20:10:14 [::]:8080        rcv 127.0.0.1:8081  : txid=1      len=175  "{\"q\":\"reg\",\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"s\":\"pQ7EVE7h8c3Z6wRHoVGsDiMr51gzwG8w3aQot62sp9oKX9ej8aEJ+bm901IugJMHs1xWXW0KQ+LqwnvIhgIXCw==\",\"v\":\"website\"}"
+2017/09/10 20:10:14 [::]:8080        snd 127.0.0.1:8081  : txid=1      len=34   "{\"c\":200,\"a\":\"127.0.0.1:8081\"}"
+2017/09/10 20:10:14 [::]:8081        rcv 127.0.0.1:8080  : txid=1      len=34   "{\"c\":200,\"a\":\"127.0.0.1:8081\"}"
+2017/09/10 20:10:14 Public Website listening on  [::]:8081
+2017/09/10 20:10:14 Local Website listening on  0.0.0.0:8082
+pvk= 504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12
+pbk= 78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12
+sig= a50ec4544ee1f1cdd9eb0447a151ac0e232be75833c06f30dda428b7adaca7da0a5fd7a3f1a109f9b9bdd3522e809307b35c565d6d0a43e2eac27bc88602170b
+2017/09/10 20:10:14 [::]:8081        snd 127.0.0.1:8080  : txid=2      len=33   "{\"q\":\"testport\",\"t\":\"random\"}"
+2017/09/10 20:10:14 [::]:8080        rcv 127.0.0.1:8081  : txid=2      len=33   "{\"q\":\"testport\",\"t\":\"random\"}"
+2017/09/10 20:10:14 [::]:55924       snd 127.0.0.1:8081  : txid=1      len=54   "{\"q\":\"porttest\",\"a\":\"127.0.0.1:8081\",\"t\":\"random\"}"
+2017/09/10 20:10:14 [::]:8081        rcv 127.0.0.1:55924 : txid=1      len=54   "{\"q\":\"porttest\",\"a\":\"127.0.0.1:8081\",\"t\":\"random\"}"
+2017/09/10 20:10:14 porttest q:  127.0.0.1:55924 random
+2017/09/10 20:10:14 porttest success
+2017/09/10 20:10:14 [::]:8081        snd 127.0.0.1:55924 : txid=1      len=48   "{\"c\":200,\"a\":\"127.0.0.1:55924\",\"d\":\"random\"}"
+2017/09/10 20:10:14 [::]:55924       rcv 127.0.0.1:8081  : txid=1      len=48   "{\"c\":200,\"a\":\"127.0.0.1:55924\",\"d\":\"random\"}"
+2017/09/10 20:10:14 { 200 [] []  127.0.0.1:55924 random  0 [] 0 0}
+go run main.go browser -r 127.0.0.1:8080 -l 0.0.0.0:8083 --ws 0.0.0.0:8085 --proxy 0.0.0.0:8084 --headless
+2017/09/10 20:10:15 me.com server listening on 0.0.0.0:8085
+2017/09/10 20:10:15 browser proxy listening on 0.0.0.0:8084
+2017/09/10 20:10:15 [::]:8083        snd 127.0.0.1:8080  : txid=1      len=33   "{\"q\":\"testport\",\"t\":\"random\"}"
+2017/09/10 20:10:15 [::]:8080        rcv 127.0.0.1:8083  : txid=1      len=33   "{\"q\":\"testport\",\"t\":\"random\"}"
+2017/09/10 20:10:15 [::]:55924       snd 127.0.0.1:8083  : txid=2      len=54   "{\"q\":\"porttest\",\"a\":\"127.0.0.1:8083\",\"t\":\"random\"}"
+2017/09/10 20:10:15 [::]:8083        rcv 127.0.0.1:55924 : txid=2      len=54   "{\"q\":\"porttest\",\"a\":\"127.0.0.1:8083\",\"t\":\"random\"}"
+2017/09/10 20:10:15 porttest q:  127.0.0.1:55924 random
+2017/09/10 20:10:15 porttest success
+2017/09/10 20:10:15 [::]:8083        snd 127.0.0.1:55924 : txid=2      len=48   "{\"c\":200,\"a\":\"127.0.0.1:55924\",\"d\":\"random\"}"
+2017/09/10 20:10:15 port 8083  is open: true
+2017/09/10 20:10:15 [::]:55924       rcv 127.0.0.1:8083  : txid=2      len=48   "{\"c\":200,\"a\":\"127.0.0.1:55924\",\"d\":\"random\"}"
+2017/09/10 20:10:15 { 200 [] []  127.0.0.1:55924 random  0 [] 0 0}
 HTTP GET  http://127.0.0.1:8085/index.html
 <html>
 <head>
@@ -76,37 +118,54 @@ HTTP GET  http://127.0.0.1:8085/index.html
 </head>
 <body>
 
-  <div align="center">
-    Find: <input type="text" id="search" style="width:60%" /><input type="button" value="find" id="bt" />
+  <div style="position:absolute;top:16px;right:16px;border:solid 1px gray;padding:4px;">
+    Port status: <input type="text" id="port" style="width:80px" />
+    <input type="button" value="Change" id="change" />
+    <span id="status">unknown</span>
   </div>
-  <script>
-    $("#search").css("border", "solid 1px gray")
-    $("#bt").click(function(){
-      var v = $("#search").val();
-      if (v == "") {
-        $("#search").css("border", "solid 1px red")
-      } else {
-        $("#search").css("border", "solid 1px gray")
-        window.open("http://"+v+".me.com/")
-      }
-    })
-  </script>
-</body>
-</html>
-HTTP GET  http://b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74.me.com/index.html
-<html>
-<head>
-  <title>me.com: myself on the internet</title>
-  <script src="jquery-3.2.1.min.js"></script>
-</head>
-<body>
 
-  <div align="center">
-    Find: <input type="text" id="search" style="width:60%" /><input type="button" value="find" id="bt" />
+  <div align="center" style="margin-top:60px">
+    Find: <input type="text" id="search" style="width:60%" /><input type="button" value="find" id="find" />
+  </div>
+
+  <div align="center" style="margin-top:60px">
+    List: <input type="button" id="list" value="refresh" />
+    <div id="peers"></div>
   </div>
   <script>
+    $("#list").click(function(){
+      $("#peers").html("")
+      $.post("/list/0/30", function(res) {
+        res.forEach(function(item){
+          $("#peers").append($("<div><b>"+item.Name+"</b>: "+item.Pbk+"</div>"))
+        })
+      })
+    })
+  </script>
+  <script>
+    $("#change").attr("disabled", "disabled")
+    $("#port").val("searching").attr("disabled", "disabled")
+    $("#change").click(function(){
+      var port = $("#port").val()
+      $.post("/change_port/"+port, function(res) {
+        $("#port").val(res.Port).attr("disabled", false)
+        if(res.Status==0){ $("#status").html("unknown") }
+        if(res.Status==1){ $("#status").html("open") }
+        if(res.Status==2){ $("#status").html("close") }
+        $("#change").attr("disabled", false)
+      })
+    })
+    $.post("/test_port", function(res) {
+      $("#port").val(res.Port).attr("disabled", false)
+      if(res.Status==0){ $("#status").html("unknown") }
+      if(res.Status==1){ $("#status").html("open") }
+      if(res.Status==2){ $("#status").html("close") }
+      $("#change").attr("disabled", false)
+    })
+  </script>
+  <script>
     $("#search").css("border", "solid 1px gray")
-    $("#bt").click(function(){
+    $("#find").click(function(){
       var v = $("#search").val();
       if (v == "") {
         $("#search").css("border", "solid 1px red")
@@ -118,44 +177,61 @@ HTTP GET  http://b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d7
   </script>
 </body>
 </html>
---- PASS: Test1 (7.32s)
+HTTP GET  http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html
+2017/09/10 20:10:16 [001] INFO: Got request /index.html 78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com GET http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html
+2017/09/10 20:10:16 [::]:8083        snd 127.0.0.1:8080  : txid=2      len=81   "{\"q\":\"find\",\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"v\":\"website\"}"
+2017/09/10 20:10:16 [::]:8080        rcv 127.0.0.1:8083  : txid=2      len=81   "{\"q\":\"find\",\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"v\":\"website\"}"
+2017/09/10 20:10:16 [::]:8080        snd 127.0.0.1:8083  : txid=2      len=221  "{\"c\":200,\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"s\":\"pQ7EVE7h8c3Z6wRHoVGsDiMr51gzwG8w3aQot62sp9oKX9ej8aEJ+bm901IugJMHs1xWXW0KQ+LqwnvIhgIXCw==\",\"v\":\"website\",\"a\":\"127.0.0.1:8083\",\"d\":\"127.0.0.1:8081\",\"u\":1}"
+2017/09/10 20:10:16 [::]:8083        rcv 127.0.0.1:8080  : txid=2      len=221  "{\"c\":200,\"p\":\"eOfUxaoT49mlOKWqKgJ8tTQ5MaSKb9e3sa5pnsgSXxI=\",\"s\":\"pQ7EVE7h8c3Z6wRHoVGsDiMr51gzwG8w3aQot62sp9oKX9ej8aEJ+bm901IugJMHs1xWXW0KQ+LqwnvIhgIXCw==\",\"v\":\"website\",\"a\":\"127.0.0.1:8083\",\"d\":\"127.0.0.1:8081\",\"u\":1}"
+2017/09/10 20:10:16 [001] INFO: Copying response to client 200 OK [200]
+2017/09/10 20:10:16 [001] INFO: Copied 222 bytes to client error=<nil>
+A demo website.
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?1" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?2" />
+<img src="tumblr_nosz96g2GT1t0pdxwo1_1280.jpg?3" />
+2017/09/10 20:10:16 tasklist <nil>
+2017/09/10 20:10:16 taskkill /f <nil>
+--- PASS: Test1 (7.12s)
     --- PASS: Test1/1 (1.02s)
-    --- PASS: Test1/2 (2.01s)
+    --- PASS: Test1/2 (2.05s)
     --- PASS: Test1/3 (3.02s)
 PASS
-ok  	github.com/mh-cbon/rendez-vous	7.329s
+ok  	github.com/mh-cbon/rendez-vous	7.128s
 ```
 
 # todos
 
 #### $ grep --include='*go' -r todo -B 1 -A 1 -n
 ```sh
-server/server.go-41-		case model.Register:
-server/server.go:42:			//todo: rendez-vous server should implement a write token
-server/server.go-43-
+client/token.go-11-	tokens map[string]string
+client/token.go:12:} //todos: add a limit on maximum number of tokens.
+client/token.go-13-
 --
-server/server.go-68-		case model.Unregister:
-server/server.go:69:			//todo: unregister should accept/verify a pbk/sig/value with a special value to identify the query issuer.
-server/server.go-70-			if len(v.Pbk) == 0 {
+server/handler.go-74-		var res *model.Message
+server/handler.go:75:		//todo: rendez-vous server should implement a write token
+server/handler.go-76-		if len(m.Pbk) == 0 {
 --
-server/server.go-90-		case model.Join:
-server/server.go:91:			//todo: Join the swarm
-server/server.go-92-		case model.Leave:
-server/server.go:93:			//todo: leave the swarm
-server/server.go-94-		}
+server/handler.go-106-		var res *model.Message
+server/handler.go:107:		//todo: unregister should accept/verify a pbk/sig/value with a special value to identify the query issuer.
+server/handler.go-108-		if len(m.Pbk) == 0 {
 --
-server/registration.go-2-
-server/registration.go:3://todo: add storage clean up with ttl on entry
+server/handler.go-184-	return QueryHandler(model.DoKnock, func(remote net.Addr, m model.Message, reply MessageResponseWriter) error {
+server/handler.go:185:		//todo: protect from undesired usage.
+server/handler.go-186-		addrToKnock := m.Data
 --
-main.go-31-
-main.go:32://todo: rendez-vous server should check ttl registrations
-main.go:33://todo: rendez-vous server should implement a write token concept to register
-main.go:34://todo: rendez-vous server unregister should accept/verify a pbk/sig/value with a special value to identify the query issuer.
-main.go-35-
+server/handler.go-225-	return QueryHandler(model.TestPort, func(remote net.Addr, m model.Message, reply MessageResponseWriter) error {
+server/handler.go:226:		//todo: protect from undesired usage.
+server/handler.go-227-		go func(remote string, token string) {
 --
-main.go-235-	handler := http.FileServer(http.Dir(opts.Dir))
-main.go:236:	public := utils.ServeHTTPFromListener(ln, httpServer(handler, "")) //todo: replace with a transparent proxy, so the website can live into another process
-main.go-237-	local := httpServer(handler, "127.0.0.1:"+opts.Local)
+main.go-29-
+main.go:30://todo: rendez-vous server should implement a write token concept to register
+main.go:31://todo: rendez-vous server unregister should accept/verify a pbk/sig/value with a special value to identify the query issuer.
+main.go-32-
+--
+main.go-231-	handler := http.FileServer(http.Dir(opts.Dir))
+main.go:232:	public := utils.ServeHTTPFromListener(ln, httpServer(handler, "")) //todo: replace with a transparent proxy, so the website can live into another process
+main.go-233-	local := httpServer(handler, opts.Local)
 --
 socket/tx.go-66-	t.id++
 socket/tx.go:67:	//todo: find a better way
@@ -168,4 +244,8 @@ socket/tx.go-87-	return err
 socket/tx.go-97-	_, err := t.UDP.Write(data, remote)
 socket/tx.go:98:	//todo: handle _
 socket/tx.go-99-	return err
+--
+store/pendingops.go-26-	if token == "" {
+store/pendingops.go:27:		token = "random" //todo: random token
+store/pendingops.go-28-	}
 ```

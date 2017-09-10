@@ -147,8 +147,13 @@ func clean() error {
 	t.Stderr = os.Stdout
 	err := t.Run()
 	log.Println("tasklist", err)
-	err = exec.Command("cmd", "/C", "taskkill", "/F", "/IM", exeFile+".exe", "/T").Run()
+	err = exec.Command("cmd", "/C", "taskkill", "/F", "/IM", exeFile, "/T").Run()
 	log.Println("taskkill /f", err)
+	t = exec.Command("cmd", "/C", "tasklist")
+	t.Stdout = os.Stdout
+	t.Stderr = os.Stdout
+	err = t.Run()
+	log.Println("tasklist", err)
 	return os.Remove(exeFile)
 }
 
