@@ -6,10 +6,8 @@ install:
   # specific to go
   - echo %PATH%
   - DIR C:\msys64
-  - DIR C:\msys64\mingw64
-  - DIR C:\msys64\usr\include
-  - DIR C:\msys64\usr\lib
-  - set PATH=C:\msys64;C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
+  - DIR C:\msys64\mingw64\bin
+  - set PATH=C:\msys64\mingw64\bin;C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
   - go get -u github.com/jessevdk/go-flags
   - go get -u github.com/elazarl/goproxy
   - go get -u github.com/bradfitz/iter
