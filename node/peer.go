@@ -129,6 +129,7 @@ func (r *PeerNode) Resolve(remote string, addr string, service string, me *ident
 			if runtime.GOOS == "windows" && len(u) == 2 && u[0] == "0.0.0.0" {
 				remote = "127.0.0.1:" + u[1]
 			}
+			log.Println(u, remote, newRemote.String())
 			return remote, nil
 		}
 		remote := res.Data //todo: figure out.
@@ -136,6 +137,7 @@ func (r *PeerNode) Resolve(remote string, addr string, service string, me *ident
 		if runtime.GOOS == "windows" && len(u) == 2 && u[0] == "0.0.0.0" {
 			remote = "127.0.0.1:" + u[1]
 		}
+		log.Println(u, remote, res.Data)
 		return remote, nil
 	}
 	return addr, nil
