@@ -6,7 +6,14 @@ install:
   - refreshenv
   # specific to go
   - set PATH=%GOPATH%\bin;%PATH%
-  - go get -u github.com/mh-cbon/never-fail
+  - go get -u github.com/jessevdk/go-flags
+  - go get -u github.com/elazarl/goproxy
+  - go get -u github.com/bradfitz/iter
+  - go get -u github.com/gorilla/mux
+  - go get -u github.com/golang/protobuf/proto
+  - go get -u github.com/anacrolix/torrent
+  - go get -u github.com/anacrolix/missinggo
+  - go get -u github.com/anacrolix/go-libutp
 
 test_script:
   - go test
