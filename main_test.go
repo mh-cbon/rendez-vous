@@ -140,6 +140,7 @@ func build() error {
 }
 func clean() error {
 	exec.Command("killall", exeFile).Run()
+	exec.Command("taskkill", "/f", "/im", exeFile+"*").Run()
 	return os.Remove(exeFile)
 }
 
