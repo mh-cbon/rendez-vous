@@ -21,6 +21,10 @@ install:
 #   - set PATH=C:\MinGW\bin;%PATH%
 
 build_script:
+  - DIR C:\msys64\
+  - DIR C:\msys64\usr\bin
+  - DIR C:\MinGW\
+  - DIR C:\MinGW\bin
   - SET PATH=C:\msys64\mingw64\bin;%PATH%;C:\msys64\usr\bin
   - go test
   - go run main.go
