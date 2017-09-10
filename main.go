@@ -271,7 +271,7 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 		return fmt.Errorf("--remote argument is required")
 	}
 
-	n := node.NewPeerNode(":" + opts.Listen)
+	n := node.NewPeerNode("0.0.0.0:" + opts.Listen)
 	if err := n.Start(); err != nil {
 		return err
 	}

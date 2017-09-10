@@ -2,7 +2,6 @@ package identity
 
 import (
 	"encoding/hex"
-	"log"
 
 	src "golang.org/x/crypto/ed25519"
 )
@@ -33,10 +32,6 @@ func FromPvk(pvk, value string) (*Identity, error) {
 		}
 		pvk = hex.EncodeToString(pvkRaw)
 	}
-	// pvkRaw, pbkRaw, err := ed25519.PvkFromHex(pvk)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	pvkRaw, err := hex.DecodeString(pvk)
 	if err != nil {
 		return nil, err
@@ -45,8 +40,6 @@ func FromPvk(pvk, value string) (*Identity, error) {
 	signRaw := src.Sign(pvkRaw, []byte(value))
 	pbkHex := hex.EncodeToString(pbkRaw)
 	signHex := hex.EncodeToString(signRaw)
-	log.Println(src.Verify(pbkRaw, []byte(value), signRaw))
-	log.Println(src.Verify(pbkRaw, []byte(value), signRaw))
 
 	return &Identity{
 		Pvk:   pvk,
@@ -74,7 +67,6 @@ func FromPbk(pbk, value string) (*PublicIdentity, error) {
 
 // Sign given value
 func Sign(pvk string, value string) ([]byte, error) {
-	// pvkRaw, pbkRaw, err := src.PvkFromHex(pvk)
 	pvkRaw, err := hex.DecodeString(pvk)
 	if err != nil {
 		return nil, err
