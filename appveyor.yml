@@ -9,7 +9,8 @@ install:
   - echo %PATH%
   - DIR C:\
   - DIR C:\Tools
-  # - set PATH=C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
+  - DIR C:\Tools\msys64
+  - set PATH=C:\Tools\msys64\usr\bin;%GOPATH%\bin;%PATH%
   - go get -u github.com/jessevdk/go-flags
   - go get -u github.com/elazarl/goproxy
   - go get -u github.com/bradfitz/iter
