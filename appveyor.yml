@@ -19,4 +19,4 @@ install:
 
 build_script:
   - go test
-  - go run main.go
+  - go run main.go -h
