@@ -14,7 +14,7 @@ import (
 )
 
 var srcIP = "0.0.0.0" // something does not work on appveyor with this ip
-// var srcIP = "127.0.0.1"
+var dstIP = "127.0.0.1"
 
 func Test1(t *testing.T) {
 	clean()
@@ -31,7 +31,7 @@ func Test1(t *testing.T) {
 		defer rv.Process.Kill()
 		defer rv.Process.Release()
 
-		if err := runPing(srcIP + ":8070"); err != nil {
+		if err := runPing(dstIP + ":8070"); err != nil {
 			t.Error(err)
 		}
 	})
@@ -52,12 +52,12 @@ func Test1(t *testing.T) {
 		defer ws.Process.Kill()
 		defer ws.Process.Release()
 
-		err = runHttpGet(srcIP+":8090", "http://127.0.0.1:8091/index.html")
+		err = runHttpGet(dstIP+":8090", "http://127.0.0.1:8091/index.html")
 		if err != nil {
 			t.Error(err)
 		}
 
-		err = runHttpGet(srcIP+":8090", "http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html")
+		err = runHttpGet(dstIP+":8090", "http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html")
 		if err != nil {
 			t.Error(err)
 		}
