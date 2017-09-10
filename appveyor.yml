@@ -3,8 +3,6 @@ image:
 
 install:
   - DIR C:\
-  - rmdir /s /q C:\cygwin
-  - rmdir /s /q C:\cygwin64
   # - choco install make
   # - refreshenv
   # specific to go
