@@ -13,6 +13,7 @@ import (
 	"time"
 
 	flags "github.com/jessevdk/go-flags"
+	"github.com/mh-cbon/rendez-vous/admin"
 	"github.com/mh-cbon/rendez-vous/browser"
 	"github.com/mh-cbon/rendez-vous/client"
 	"github.com/mh-cbon/rendez-vous/identity"
@@ -24,7 +25,7 @@ import (
 )
 
 type mainOpts struct {
-	Version bool `long:"version" description:"Show version"`
+	Version bool `short:"v" long:"version" description:"Show version"`
 }
 
 //todo: rendez-vous server should implement a write token concept to register
@@ -340,7 +341,7 @@ func (opts *rendezVousBrowserCommand) Execute(args []string) error {
 	}
 
 	proxy := browser.NewProxy(opts.Listen, opts.Remote, wsAddr.String(), proxyAddr.String(), nil)
-	gateway := httpServer(browser.MakeWebsite(proxy, opts.Dir), wsAddr.String())
+	gateway := httpServer(admin.MakeWebsite(proxy, opts.Dir), wsAddr.String())
 
 	readyErr := ready(func() error {
 		log.Println("me.com server listening on", wsAddr.String())
