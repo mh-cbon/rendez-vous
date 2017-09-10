@@ -141,14 +141,14 @@ func build() error {
 	return cmd.Run()
 }
 func clean() error {
-	exec.Command("killall", exeFile).Wait()
-	t := exec.Command("taskkill.exe", "/v")
+	exec.Command("killall", exeFile).Run()
+	t := exec.Command("cmd", "/C", "taskkill", "/v")
 	t.Stdout = os.Stdout
 	t.Stderr = os.Stdout
-	err := t.Wait()
-	log.Println("taskkill.exe /v", err)
-	err = exec.Command("taskkill.exe", "/f", "/im", exeFile+"*").Wait()
-	log.Println("taskkill.exe /f", err)
+	err := t.Run()
+	log.Println("taskkill /v", err)
+	err = exec.Command("cmd", "/C", "taskkill", "/f", "/im", exeFile+"*").Run()
+	log.Println("taskkill /f", err)
 	return os.Remove(exeFile)
 }
 
