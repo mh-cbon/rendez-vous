@@ -15,7 +15,7 @@ install:
   - go get -u github.com/golang/protobuf/proto
   - go get -u github.com/anacrolix/torrent
   - go get -u github.com/anacrolix/missinggo
-  - go get -u github.com/anacrolix/go-libutp
+  - go get -v -u -a -x github.com/anacrolix/go-libutp
 
 # before_build:
 #   # Workaround for CMake not wanting sh.exe on PATH for MinGW
