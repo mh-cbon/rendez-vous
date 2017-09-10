@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -121,15 +122,23 @@ func geturl(client *http.Client, u string) error {
 	return nil
 }
 
+var exeFile = "./t"
+
+func init() {
+	if runtime.GOOS == "windows" {
+		exeFile = "./t.exe"
+	}
+}
+
 func build() error {
-	cmd := exec.Command("go", "build", "-o", "t", "main.go")
+	cmd := exec.Command("go", "build", "-o", exeFile, "main.go")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stdout
 	return cmd.Run()
 }
 func clean() error {
-	exec.Command("killall", "t").Run()
-	return os.Remove("t")
+	exec.Command("killall", exeFile).Run()
+	return os.Remove(exeFile)
 }
 
 func makeCmd(b string, args ...string) *exec.Cmd {
@@ -141,27 +150,27 @@ func makeCmd(b string, args ...string) *exec.Cmd {
 }
 
 func runRendezVous(port string) (*exec.Cmd, error) {
-	cmd := makeCmd("./t", "serve", "-l", port)
+	cmd := makeCmd(exeFile, "serve", "-l", port)
 	return cmd, timeout(cmd.Run, time.Second)
 }
 
 func runPing(remote string) error {
-	cmd := makeCmd("./t", "client", "-q", "ping", "-r", remote)
+	cmd := makeCmd(exeFile, "client", "-q", "ping", "-r", remote)
 	return cmd.Run()
 }
 
 func runWebsite(remote, listen, local, pvk string) (*exec.Cmd, error) {
-	cmd := makeCmd("./t", "website", "-r", remote, "-l", listen, "--local", local, "--pvk", pvk, "--dir", "demows")
+	cmd := makeCmd(exeFile, "website", "-r", remote, "-l", listen, "--local", local, "--pvk", pvk, "--dir", "demows")
 	return cmd, timeout(cmd.Run, time.Second)
 }
 
 func runBrowser(remote, listen, proxy, ws string) (*exec.Cmd, error) {
-	cmd := makeCmd("./t", "browser", "-r", remote, "-l", listen, "--ws", ws, "--proxy", proxy, "--headless")
+	cmd := makeCmd(exeFile, "browser", "-r", remote, "-l", listen, "--ws", ws, "--proxy", proxy, "--headless")
 	return cmd, timeout(cmd.Run, time.Second)
 }
 
 func runHttpGet(remote, url string) error {
-	cmd := makeCmd("./t", "http", "--url", url, "--remote", remote)
+	cmd := makeCmd(exeFile, "http", "--url", url, "--remote", remote)
 	return cmd.Run()
 }
 
