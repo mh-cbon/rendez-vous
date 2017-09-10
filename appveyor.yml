@@ -7,7 +7,8 @@ install:
   # specific to go
   # - echo %PATH%
   # - set PATH=C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
-  - curl -fsS -o tdm-gcc.exe "https://downloads.sourceforge.net/project/tdm-gcc/TDM-GCC Installer/tdm-gcc-5.1.0-3.exe?use_mirror=gigenet"
+  - curl.exe -fsS -o tdm-gcc.exe "https://downloads.sourceforge.net/project/tdm-gcc/TDM-GCC Installer/tdm-gcc-5.1.0-3.exe?use_mirror=gigenet"
+  - DIR
   - tdm-gcc.exe
   - go get -u github.com/jessevdk/go-flags
   - go get -u github.com/elazarl/goproxy
