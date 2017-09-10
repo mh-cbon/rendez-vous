@@ -3,8 +3,6 @@ package utils
 import (
 	"net"
 	"net/http"
-
-	"github.com/anacrolix/utp"
 )
 
 // UDP listen for given address
@@ -20,15 +18,6 @@ func UDP(address string) (*net.UDPConn, error) {
 		return nil, err
 	}
 	return conn, nil
-}
-
-//UTPDialer http transport on utp
-func UTPDialer(dialAddr string) *http.Transport {
-	return &http.Transport{
-		Dial: func(network, addr string) (net.Conn, error) {
-			return utp.Dial(dialAddr)
-		},
-	}
 }
 
 //ServeHTTPFromListener returns an http server serving on the given net.Listener

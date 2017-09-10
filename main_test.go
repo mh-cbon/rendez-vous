@@ -40,7 +40,7 @@ func Test1(t *testing.T) {
 		defer rv.Process.Kill()
 		defer rv.Process.Release()
 
-		pvk := "202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e"
+		pvk := "504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12"
 		ws, err := runWebsite(":8090", "8091", "8092", pvk)
 		if err != nil {
 			t.Error(err)
@@ -53,7 +53,7 @@ func Test1(t *testing.T) {
 			t.Error(err)
 		}
 
-		err = runHttpGet(":8090", "http://b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74.me.com/index.html")
+		err = runHttpGet(":8090", "http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html")
 		if err != nil {
 			t.Error(err)
 		}
@@ -67,7 +67,7 @@ func Test1(t *testing.T) {
 		defer rv.Process.Kill()
 		defer rv.Process.Release()
 
-		pvk := "202d229c0f09f41c858066496b21c27e59266ec7c5b0933275518b351da5e92e"
+		pvk := "504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12"
 		ws, err := runWebsite(":8080", "8081", "8082", pvk)
 		if err != nil {
 			t.Error(err)
@@ -99,7 +99,7 @@ func Test1(t *testing.T) {
 		}
 		client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyUrl)}}
 		{
-			err := geturl(client, "http://b6b8113748fe0795658fa9d6ab3e36d27d72e97b7df407e7a8080d61ec405d74.me.com/index.html")
+			err := geturl(client, "http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html")
 			if err != nil {
 				t.Error(err)
 			}
