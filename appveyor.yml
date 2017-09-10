@@ -1,0 +1,13 @@
+image:
+- Visual Studio 2017
+
+install:
+  - choco install make
+  - refreshenv
+  # specific to go
+  - set PATH=%GOPATH%\bin;%PATH%
+  - go get -u github.com/mh-cbon/never-fail
+
+test_script:
+  - go test
+  - go run main.go
