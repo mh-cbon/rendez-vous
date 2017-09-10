@@ -28,7 +28,7 @@ func Test1(t *testing.T) {
 		defer rv.Process.Kill()
 		defer rv.Process.Release()
 
-		if err := runPing(":8070"); err != nil {
+		if err := runPing("0.0.0.0:8070"); err != nil {
 			t.Error(err)
 		}
 	})
@@ -42,19 +42,19 @@ func Test1(t *testing.T) {
 		defer rv.Process.Release()
 
 		pvk := "504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12"
-		ws, err := runWebsite(":8090", "8091", "8092", pvk)
+		ws, err := runWebsite("0.0.0.0:8090", "8091", "8092", pvk)
 		if err != nil {
 			t.Error(err)
 		}
 		defer ws.Process.Kill()
 		defer ws.Process.Release()
 
-		err = runHttpGet(":8090", "http://127.0.0.1:8091/index.html")
+		err = runHttpGet("0.0.0.0:8090", "http://127.0.0.1:8091/index.html")
 		if err != nil {
 			t.Error(err)
 		}
 
-		err = runHttpGet(":8090", "http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html")
+		err = runHttpGet("0.0.0.0:8090", "http://78e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12.me.com/index.html")
 		if err != nil {
 			t.Error(err)
 		}
@@ -69,14 +69,14 @@ func Test1(t *testing.T) {
 		defer rv.Process.Release()
 
 		pvk := "504bc61393e5d7ea991dbfad4d5bb98093562d472fa22d425a35bcd46341d8f678e7d4c5aa13e3d9a538a5aa2a027cb5343931a48a6fd7b7b1ae699ec8125f12"
-		ws, err := runWebsite(":8080", "8081", "8082", pvk)
+		ws, err := runWebsite("0.0.0.0:8080", "8081", "8082", pvk)
 		if err != nil {
 			t.Error(err)
 		}
 		defer ws.Process.Kill()
 		defer ws.Process.Release()
 
-		bw, err := runBrowser(":8080", "8083", "8084", "8085")
+		bw, err := runBrowser("0.0.0.0:8080", "8083", "8084", "8085")
 		if err != nil {
 			t.Error(err)
 		}
