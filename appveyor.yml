@@ -2,7 +2,7 @@ image:
 - Visual Studio 2017
 
 install:
-  - DIR C:\cygwin64
+  - DIR C:\cygwin64\bin
   # - choco install make
   # - refreshenv
   # specific to go
