@@ -3,6 +3,7 @@ package main_test
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -140,8 +141,14 @@ func build() error {
 	return cmd.Run()
 }
 func clean() error {
-	exec.Command("killall", exeFile).Run()
-	exec.Command("taskkill", "/f", "/im", exeFile+"*").Run()
+	exec.Command("killall", exeFile).Wait()
+	t := exec.Command("taskkill", "/v")
+	t.Stdout = os.Stdout
+	t.Stderr = os.Stdout
+	err := t.Wait()
+	log.Println("taskkill /v", err)
+	err = exec.Command("taskkill", "/f", "/im", exeFile+"*").Wait()
+	log.Println("taskkill /f", err)
 	return os.Remove(exeFile)
 }
 
