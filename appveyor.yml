@@ -13,7 +13,7 @@ install:
   - set PATH=C:\msys64\mingw64\bin;;%PATH%
   - set PATH=%GOPATH%\bin;%PATH%
   - go get -u github.com/mh-cbon/never-fail
-  - never-fail go get -v -u -a -x github.com/anacrolix/go-libutp
+  - never-fail go get -v -u -a -x github.com/mh-cbon/go-libutp
   - go get -u github.com/jessevdk/go-flags
   - go get -u github.com/elazarl/goproxy
   - go get -u github.com/bradfitz/iter
