@@ -6,6 +6,7 @@ install:
   # - choco install make
   # - refreshenv
   # specific to go
+  - echo %PATH%
   - set PATH=C:\msys64\usr\bin;%GOPATH%\bin;%PATH%
   - go get -u github.com/jessevdk/go-flags
   - go get -u github.com/elazarl/goproxy
