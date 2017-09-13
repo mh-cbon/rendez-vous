@@ -10,10 +10,6 @@ import (
 	"github.com/mh-cbon/rendez-vous/browser"
 )
 
-func Static(r *mux.Router, dir string) {
-	r.PathPrefix("/").Handler(http.FileServer(http.Dir(dir)))
-}
-
 func Node(r *mux.Router, proxyApp *browser.Proxy) {
 
 	r.HandleFunc("/get_port", func(w http.ResponseWriter, r *http.Request) {

@@ -3,18 +3,35 @@
   "version": "1.0.0",
   "description": "",
   "main": "app.js",
+  "watch": {
+    "js": {
+      "patterns": [
+        "**.js"
+      ],
+      "extensions": "js",
+      "ignore": "node_modules/",
+      "quiet": true
+    }
+  },
   "scripts": {
-    "start": "watch 'browserify main.js > ../static/app.js' . -p=/node_modules/ -d",
-    "build": "cp node_modules/jquery/dist/jquery.min.js ../static/jquery.min.js && cd semantic && gulp build"
+    "build": "npm run js-prod && npm run css",
+    "js": "browserify -t hyperxify main.js > ../static/app.js",
+    "js-prod": "browserify -t hyperxify main.js | uglifyjs --compress --mangle > ../static/app.js",
+    "css": "cp node_modules/jquery/dist/jquery.min.js ../static/jquery.min.js && cd semantic && gulp build",
+    "watch": "npm-watch"
   },
   "keywords": [],
   "author": "mh-cbon <mh-cbon@users.noreply.github.com>",
   "license": "MIT",
   "dependencies": {
+    "form-serialize": "^0.7.2",
     "hyperx": "^2.3.0",
+    "hyperxify": "^2.0.1",
     "jquery": "^3.2.1",
     "main-loop": "^3.4.0",
+    "npm-watch": "^0.2.0",
     "semantic-ui": "^2.2.13",
+    "uglify-js": "^3.1.0",
     "virtual-dom": "^2.1.1"
   }
 }

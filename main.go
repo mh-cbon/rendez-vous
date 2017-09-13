@@ -13,6 +13,7 @@ import (
 	"time"
 
 	flags "github.com/jessevdk/go-flags"
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/mh-cbon/rendez-vous/admin"
 	"github.com/mh-cbon/rendez-vous/browser"
 	"github.com/mh-cbon/rendez-vous/client"
@@ -119,7 +120,7 @@ type rendezVousBrowserCommand struct {
 	Dir      string `long:"dir" description:"The directory of the website" default:"admin/static/"`
 	Ws       string `short:"w" long:"ws" description:"The port of the website" default:"127.0.0.1:9016"`
 	Headless bool   `long:"headless" description:"Run in headless mode (no-gui)"`
-	DbFile   string `long:"db" description:"The path to the database file." default:"admin/db.bolt"`
+	DbFile   string `long:"db" description:"The path to the database file." default:"admin/file.db"`
 }
 
 func (opts *rendezVousBrowserCommand) Execute(args []string) error {
@@ -378,7 +379,7 @@ func (opts *rendezVousHTTPCommand) Execute(args []string) error {
 type rendezVousWsAdminCommand struct {
 	Listen string `short:"l" long:"listen" description:"HTTP/tcp port to listen" default:"127.0.0.1:9065"`
 	Dir    string `long:"dir" description:"The directory of the website" default:"admin/static/"`
-	DbFile string `long:"db" description:"The path to the database file." default:"admin/db.bolt"`
+	DbFile string `long:"db" description:"The path to the database file." default:"admin/file.db"`
 }
 
 func (opts *rendezVousWsAdminCommand) Execute(args []string) error {

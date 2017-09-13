@@ -1,0 +1,38 @@
+.app .fixmenu{
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 120px;
+  background-color: white;
+  margin-top: 0;
+  border-radius: 0;
+  transition: opacity .5s, width .5s, left .5s;
+  opacity: 1;
+  z-index: 3;
+}
+
+.app .app-view{
+  position: absolute;
+  top: 0;
+  padding-left: 120px;
+  width: 100%;
+  right: 0;
+  background:white;
+  transition:opacity .5s, padding .5s;
+  padding-left: 60px;
+  opacity: 1;
+  padding-right: 3%;
+}
+.app .app-view.hide{
+  padding-left: 140px;
+  opacity: 0;
+  z-index: 1;
+}
+.app .app-view.active{
+  padding-left: 120px;
+  z-index: 2;
+}
+.app .invisible{
+  display: none;
+}

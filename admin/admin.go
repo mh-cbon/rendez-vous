@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/asdine/storm"
+	"github.com/gocraft/dbr"
 	"github.com/gorilla/mux"
 	"github.com/mh-cbon/rendez-vous/browser"
 )
@@ -21,25 +21,28 @@ func New(srvListen, dbFile, static string, proxyApp *browser.Proxy) *Website {
 type Website struct {
 	srv       *http.Server
 	srvListen string
-	db        *storm.DB
+	conn      *dbr.Connection
+	sess      *dbr.Session
 	dbFile    string
 	static    string
 	proxyApp  *browser.Proxy
 }
 
 func (w *Website) ListenAndServe() error {
-	db, err := storm.Open(w.dbFile)
+
+	conn, err := dbr.Open("sqlite3", w.dbFile, nil)
 	if err != nil {
 		return err
 	}
-	w.db = db
+	w.conn = conn
+	w.sess = conn.NewSession(nil)
 
 	r := mux.NewRouter()
 	if w.proxyApp != nil {
 		Node(r, w.proxyApp)
 	}
-	Apps(r, w.db)
-	Static(r, w.static)
+	Apps(r, w.sess)
+	UI(r, w.static)
 
 	w.srv = &http.Server{
 		Handler:      r,
@@ -52,9 +55,9 @@ func (w *Website) ListenAndServe() error {
 
 func (w *Website) Close() error {
 
-	err := w.db.Close()
+	err := w.conn.Close()
 	if err == nil {
-		w.db = nil
+		w.conn = nil
 	}
 
 	err = w.srv.Close()
