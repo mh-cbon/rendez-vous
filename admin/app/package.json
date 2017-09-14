@@ -15,7 +15,7 @@
   },
   "scripts": {
     "build": "npm run js-prod && npm run css",
-    "js": "browserify --debug -t hyperxify main.js > ../static/app.js",
+    "js": "browserify -t hyperxify main.js > ../static/app.js",
     "js-prod": "browserify -t hyperxify main.js | uglifyjs --compress --mangle > ../static/app.js",
     "css": "cp node_modules/jquery/dist/jquery.min.js ../static/jquery.min.js && cd semantic && gulp build",
     "watch": "npm-watch"
