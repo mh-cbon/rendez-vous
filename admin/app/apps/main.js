@@ -4,6 +4,7 @@ var vdom = require('virtual-dom')
 var hyperx = require('hyperx')
 var hx = hyperx(vdom.h)
 var main = require('main-loop')
+var webUtils = require('../web-utils');
 
 require('util').inherits(AppsMain, require('events').EventEmitter);
 module.exports = AppsMain;
@@ -14,7 +15,7 @@ var appsItemView = require('./item');
 function AppsMain () {
 
   var state = {
-    view: "list",
+    view: "",
   };
   function render (state) {
     return hx`
@@ -31,53 +32,36 @@ function AppsMain () {
 
   var that = this;
   var loop = main(state, render, vdom);
-  function hashChanged(){
-    var url = location.hash.substring(1).split("/").splice(1)
-    if (url.length>0 && url[0]=="apps") {
-      var view = "list"
-      if (url.length>1 && url[1]=="new") {
-        view = "item"
-      } else if (url.length>2 && url[1]=="edit" && url[2]!="") {
-        view = "item"
-      }
-      if (state.view!=view) {
-        state.view = view
-        loop.update(state);
-      }
+  this.enable = function(_, _, view){
+    if(view===undefined) {
+      view = "list"
+    } else if(view=="new" || view=="edit") {
+      view = "item"
+    }
+    if (state.view!=view) {
+      state.view = view;
+      loop.update(state);
     }
   }
+  var watch = webUtils.hashChanged(
+    webUtils.matchURL(/^\/apps(\/(new|edit)\/?)?/, that.enable)
+  );
 
   var appsList = new appsListView();
   var appsItem = new appsItemView();
-
-  // appsList.on("click-new", function(){
-  //   state.view = "item"
-  //   loop.update(state);
-  // });
-  //
-  // appsList.on("click-edit", function(){
-  //   state.view = "item"
-  //   loop.update(state)
-  // });
-  //
-  // appsItem.on("click-return", function(){
-  //   state.view = "list"
-  //   loop.update(state)
-  // });
 
   var loop = main(state, render, vdom);
   this.install = function(to){
     appsList.install(loop.target.querySelector(".apps-list-view"));
     appsItem.install(loop.target.querySelector(".apps-item-view"));
-    window.addEventListener("hashchange", hashChanged, false);
-    hashChanged()
+    watch.begin();
     to.appendChild(loop.target);
     loop.update(state);
   }
   this.uninstall = function(from){
     appsList.uninstall(loop.target.querySelector(".apps-list-view"));
     appsItem.uninstall(loop.target.querySelector(".apps-item-view"));
-    window.removeEventListener("hashchange", hashChanged, false);
+    watch.close();
     from.removeChild(loop.target)
   }
 }
