@@ -1,47 +1,143 @@
 package admin
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/gocraft/dbr"
 	"github.com/gorilla/mux"
+	"github.com/mh-cbon/rendez-vous/admin/shellexec"
+	"github.com/mh-cbon/rendez-vous/cli"
 )
 
 type App struct {
-	ID                 int64     `db:"id"`
-	Type               string    `db:"type"`
-	URL                string    `db:"url"`
-	Name               string    `db:"name"`
+	ID                 int64  `db:"id"`
+	Type               string `db:"type"`
+	URL                string `db:"url"`
+	Name               string `db:"name"`
+	BinaryName         string `db:"binary_name"`
+	StartPattern       string `db:"start_pattern"`
+	StartParams        []cli.Param
+	KillPattern        string `db:"kill_pattern"`
+	KillParams         []cli.Param
 	StartCommand       string    `db:"start_command"`
 	KillCommand        string    `db:"kill_command"`
 	IsSystem           bool      `db:"is_system"`
 	ExtraKill          bool      `db:"extra_kill"`
+	AnnounceName       string    `db:"announce_name"`
 	Announce           bool      `db:"announce"`
 	RequireCredentials bool      `db:"require_credentials"`
+	Credentials        string    `db:"credentials"`
 	IsInstalled        bool      `db:"is_installed"`
+	PassTest           bool      `db:"pass_test"`
 	Status             string    `db:"status"`
 	LastLogMessage     string    `db:"lastlog"`
 	UpdatedAt          time.Time `db:"updated_at"`
 }
 
+func (a *App) AutomaticName() string {
+	if a.Name == "" {
+		return filepath.Base(a.URL)
+	}
+	return a.Name
+}
+
+func execTemplate(tpl string, data map[string]interface{}) (string, error) {
+	t, err := template.New("").Parse(tpl)
+	if err != nil {
+		return "", err
+	}
+	b := new(bytes.Buffer)
+	err = t.ExecuteTemplate(b, "", data)
+	return b.String(), err
+}
+
+func (a *App) GenerateCommands(startData map[string]interface{}, killData map[string]interface{}) error {
+	if a.StartCommand == "" {
+		t, err := execTemplate(a.StartPattern, startData)
+		if err != nil {
+			return err
+		}
+		a.StartCommand = t
+		if a.StartCommand == "" {
+			return fmt.Errorf("start command is empty")
+		}
+	}
+	if a.KillCommand == "" && a.KillPattern != "" {
+		t, err := execTemplate(a.KillPattern, killData)
+		if err != nil {
+			return err
+		}
+		a.KillCommand = t
+	}
+	return nil
+}
+
+func installApp(app *App, out io.Writer) error {
+	var cmdStr string
+	if app.Type == GoApp {
+		cmdStr = "go get -u -x  " + app.URL
+	} else if app.Type == NpmApp {
+		cmdStr = "npm i " + app.URL
+	}
+	out.Write([]byte(cmdStr))
+	cmd, err := shellexec.Command("", cmdStr)
+	if err != nil {
+		return err
+	}
+	res, err := cmd.CombinedOutput()
+	if res != nil {
+		out.Write(res)
+	}
+	return err
+}
+
+func getConfig(app *App, out io.Writer) (*cli.App, error) {
+	name := app.AutomaticName()
+	cmdStr := name + " rendez-vous"
+	out.Write([]byte(cmdStr))
+	cmd, err := shellexec.Command("", cmdStr)
+	if err != nil {
+		return nil, err
+	}
+	buf := new(bytes.Buffer)
+	res, err := cmd.CombinedOutput()
+	if res != nil {
+		out.Write(res)
+	}
+	if err != nil {
+		return nil, err
+	}
+	buf.Write(res)
+	cli := new(cli.App)
+	if err := json.NewDecoder(buf).Decode(cli); err != nil {
+		return nil, err
+	}
+	return cli, nil
+}
+
 var (
 	GoApp  = "GO"
-	NpmApp = "GO"
+	NpmApp = "NPM"
 )
 
 var (
-	StatusAnnouncing = "Announcing"
-	StatusDisabled   = "Disabled"
-	StatusEnabled    = "Enabled"
+	StatusDisabled = "Disabled"
+	StatusRunning  = "Running"
+	StatusStopped  = "Stopped"
 )
 
 var okTypes = []string{GoApp, NpmApp}
 
-func Apps(r *mux.Router, db *dbr.Session) {
+func Apps(r *mux.Router, db *dbr.Session, tmpDir string) {
 
 	appsModel := AppsModel{}
 
@@ -49,8 +145,8 @@ func Apps(r *mux.Router, db *dbr.Session) {
 	fail(reduce(
 		func() error { return appsModel.Drop(db) },
 		func() error { return appsModel.Setup(db) },
-		func() error { return apps.Insert(&App{Name: "Admin", IsSystem: true}) },
-		func() error { return apps.Insert(&App{Name: "Web", IsSystem: true}) },
+		func() error { return apps.Insert(&App{Name: "Admin", IsSystem: true, Status: StatusRunning}) },
+		func() error { return apps.Insert(&App{Name: "Web", IsSystem: true, Status: StatusRunning}) },
 	))
 
 	r.HandleFunc("/list/{start:[0-9]+}/{limit:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +160,7 @@ func Apps(r *mux.Router, db *dbr.Session) {
 			func() error { return apps.Many(start, limit, &res) },
 			func() error { return json.NewEncoder(w).Encode(res) },
 		)
+		<-time.After(time.Second)
 		httpFail(w, err)
 	}).Methods("GET")
 
@@ -78,9 +175,90 @@ func Apps(r *mux.Router, db *dbr.Session) {
 				func() error { return notEmptyString(req.Type, "Type") },
 				func() error { return inEnum(okTypes, req.Type, "Type") },
 				func() error { return txApps.IsURLUnique(req.URL, req.Type, nil) },
-				func() error { return txApps.Insert(req) },
-				//todo: download + install app
+				func() error { return txApps.AddUserApp(req) },
 				func() error { return json.NewEncoder(w).Encode(req) },
+			)
+		})
+		<-time.After(time.Second)
+		httpFail(w, err)
+	}).Methods("POST")
+
+	r.HandleFunc("/install/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		app := new(App)
+		var id int64
+		vars := mux.Vars(r)
+		err := tx(db, func(tx dbr.SessionRunner) error {
+			txApps := appsModel.FromDb(tx)
+			return reduce(
+				func() error { return intVars(vars, "id", &id) },
+				func() error { return apps.ByID(id, app) },
+				func() error { return notEmptyString(app.URL, "URL") },
+				func() error { return notEmptyString(app.Type, "Type") },
+				func() error { return inEnum(okTypes, app.Type, "Type") },
+				func() error {
+					f := fmt.Sprintf("%v/install_%v.log", tmpDir, app.ID)
+					return writeFile(f, 0644, func(logFile *os.File) error {
+						out := io.MultiWriter(logFile, os.Stderr)
+						return installApp(app, out)
+					})
+				},
+				func() error {
+					return txApps.SetAppInstalled(app)
+				},
+				func() error { return json.NewEncoder(w).Encode(app) },
+			)
+		})
+		httpFail(w, err)
+	}).Methods("POST")
+
+	r.HandleFunc("/logs/{type:[a-z]+}/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		app := new(App)
+		var typeStr string
+		var id int64
+		vars := mux.Vars(r)
+		err := reduce(
+			func() error { return strVars(vars, "type", &typeStr) },
+			func() error { return intVars(vars, "id", &id) },
+			func() error { return apps.ByID(id, app) },
+			func() error {
+				f := fmt.Sprintf("%v/%v_%v.log", tmpDir, typeStr, app.ID)
+				return readFile(f, copyTo(w))
+			},
+		)
+		httpFail(w, err)
+	})
+
+	r.HandleFunc("/config/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+		app := new(App)
+		var id int64
+		vars := mux.Vars(r)
+		err := tx(db, func(tx dbr.SessionRunner) error {
+			txApps := appsModel.FromDb(tx)
+			return reduce(
+				func() error { return intVars(vars, "id", &id) },
+				func() error { return apps.ByID(id, app) },
+				func() error { return notEmptyString(app.URL, "URL") },
+				func() error { return notEmptyString(app.Type, "Type") },
+				func() error { return inEnum(okTypes, app.Type, "Type") },
+				func() error {
+					f := fmt.Sprintf("%v/config_%v.log", tmpDir, app.ID)
+					return writeFile(f, 0644, func(logFile *os.File) error {
+						out := io.MultiWriter(logFile, os.Stderr)
+						cfg, err := getConfig(app, out)
+						if err != nil {
+							return err
+						}
+						app.StartPattern = cfg.Start
+						app.KillPattern = cfg.Kill
+						app.KillParams = cfg.KillParams
+						app.StartParams = cfg.StartParams
+						return app.GenerateCommands(cfg.StartValues(), cfg.KillValues())
+					})
+				},
+				func() error {
+					return txApps.AppTestPassed(app)
+				},
+				func() error { return json.NewEncoder(w).Encode(app) },
 			)
 		})
 		httpFail(w, err)
@@ -97,7 +275,7 @@ func Apps(r *mux.Router, db *dbr.Session) {
 				func() error { return notEmptyString(req.Type, "Type") },
 				func() error { return inEnum(okTypes, req.Type, "Type") },
 				func() error { return txApps.IsURLUnique(req.URL, req.Type, &req.ID) },
-				func() error { return txApps.Update(req) },
+				func() error { return txApps.UpdateUserApp(req) },
 				func() error { return json.NewEncoder(w).Encode(req) },
 			)
 		})
@@ -112,9 +290,7 @@ func Apps(r *mux.Router, db *dbr.Session) {
 			txApps := appsModel.FromDb(tx)
 			return reduce(
 				func() error { return intVars(vars, "id", &id) },
-				func() error { return txApps.ByID(id, data) },
-				func() error { return notSystemApp(data) },
-				func() error { return txApps.DeleteByID(id) },
+				func() error { return txApps.DeleteUserApp(id) },
 				func() error { return json.NewEncoder(w).Encode(data) },
 			)
 		})
@@ -130,6 +306,7 @@ func Apps(r *mux.Router, db *dbr.Session) {
 			func() error { return apps.ByID(id, res) },
 			func() error { return json.NewEncoder(w).Encode(res) },
 		)
+		<-time.After(time.Second)
 		httpFail(w, err)
 	}).Methods("POST")
 
@@ -159,6 +336,34 @@ func Apps(r *mux.Router, db *dbr.Session) {
 
 }
 
+func copyTo(dst io.Writer) func(*os.File) error {
+	return func(src *os.File) error {
+		_, err := io.Copy(dst, src)
+		return err
+	}
+}
+
+func openFile(filepath string, flags int, perm os.FileMode, h func(*os.File) error) error {
+	f, err := os.OpenFile(filepath, flags, perm)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	return h(f)
+}
+
+func appendFile(filepath string, perm os.FileMode, h func(*os.File) error) error {
+	return openFile(filepath, os.O_CREATE|os.O_WRONLY, perm, h)
+}
+
+func writeFile(filepath string, perm os.FileMode, h func(*os.File) error) error {
+	return openFile(filepath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, perm, h)
+}
+
+func readFile(filepath string, h func(*os.File) error) error {
+	return openFile(filepath, os.O_RDONLY, 0, h)
+}
+
 func tx(db *dbr.Session, h func(tx dbr.SessionRunner) error) error {
 	x, err := db.Begin()
 	if err != nil {
@@ -169,6 +374,14 @@ func tx(db *dbr.Session, h func(tx dbr.SessionRunner) error) error {
 		return err
 	}
 	return x.Commit()
+}
+
+func strVars(vars map[string]string, name string, out *string) error {
+	if x, ok := vars[name]; ok {
+		*out = x
+		return nil
+	}
+	return fmt.Errorf("not found %q", name)
 }
 
 func intVars(vars map[string]string, name string, out *int64) error {

@@ -11,24 +11,37 @@
       "extensions": "js",
       "ignore": "node_modules/",
       "quiet": true
+    },
+    "js2": {
+      "patterns": [
+        "**.js", "*.css"
+      ],
+      "extensions": ["js","css"],
+      "ignore": "node_modules/",
+      "quiet": true
     }
   },
   "scripts": {
-    "build": "npm run js-prod && npm run css",
+    "build-prod": "npm run js-prod && npm run css",
     "js": "browserify --debug -t hyperxify main.js > ../static/app.js",
+    "js2": "browserify --debug -t hyperxify test.js > ../static/test.js",
     "js-prod": "browserify -t hyperxify main.js | uglifyjs --compress --mangle > ../static/app.js",
-    "css": "cp node_modules/jquery/dist/jquery.min.js ../static/jquery.min.js && cd semantic && gulp build",
+    "semantic": "cp node_modules/jquery/dist/jquery.min.js ../static/jquery.min.js && cd semantic && gulp build",
+    "css": "cp app.css ../static/app.css",
     "watch": "npm-watch"
   },
   "keywords": [],
   "author": "mh-cbon <mh-cbon@users.noreply.github.com>",
   "license": "MIT",
   "dependencies": {
+    "axios": "^0.16.2",
     "form-serialize": "^0.7.2",
     "hyperx": "^2.3.0",
     "hyperxify": "^2.0.1",
     "jquery": "^3.2.1",
+    "jquery-serializejson": "^2.8.1",
     "main-loop": "^3.4.0",
+    "navigo": "^5.3.1",
     "npm-watch": "^0.2.0",
     "semantic-ui": "^2.2.13",
     "uglify-js": "^3.1.0",

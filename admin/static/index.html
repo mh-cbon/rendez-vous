@@ -1,68 +1,14 @@
 <html>
 <head>
   <title>me.com: myself on the internet</title>
-  <script src="jquery.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="semantic/dist/semantic.min.css">
+    <link rel="stylesheet" type="text/css" href="app.css">
+    <script src="jquery.min.js"></script>
+    <script src="jquery.serializejson.min.js"></script>
+    <script src="semantic/dist/semantic.min.js"></script>
 </head>
 <body>
-
-  <div style="position:absolute;top:16px;right:16px;border:solid 1px gray;padding:4px;">
-    Port status: <input type="text" id="port" style="width:80px" />
-    <input type="button" value="Change" id="change" />
-    <span id="status">unknown</span>
-  </div>
-
-  <div align="center" style="margin-top:60px">
-    Find: <input type="text" id="search" style="width:60%" /><input type="button" value="find" id="find" />
-  </div>
-
-  <div align="center" style="margin-top:60px">
-    List: <input type="button" id="list" value="refresh" />
-    <div id="peers"></div>
-  </div>
-  <script>
-    $("#list").click(function(){
-      $("#peers").html("")
-      $.post("/list/0/30", function(res) {
-        res.forEach(function(item){
-          $("#peers").append($("<div><b>"+item.Name+"</b>: "+item.Pbk+"</div>"))
-        })
-      })
-    })
-  </script>
-  <script>
-    $("#list").attr("disabled", "disabled")
-    $("#change").attr("disabled", "disabled")
-    $("#port").val("searching").attr("disabled", "disabled")
-    $("#change").click(function(){
-      var port = $("#port").val()
-      $.post("/change_port/"+port, function(res) {
-        $("#port").val(res.Port).attr("disabled", false)
-        if(res.Status==0){ $("#status").html("unknown") }
-        if(res.Status==1){ $("#status").html("open") }
-        if(res.Status==2){ $("#status").html("close") }
-        $("#change").attr("disabled", false)
-      })
-    })
-    $.post("/test_port", function(res) {
-      $("#list").attr("disabled", false)
-      $("#port").val(res.Port).attr("disabled", false)
-      if(res.Status==0){ $("#status").html("unknown") }
-      if(res.Status==1){ $("#status").html("open") }
-      if(res.Status==2){ $("#status").html("close") }
-      $("#change").attr("disabled", false)
-    })
-  </script>
-  <script>
-    $("#search").css("border", "solid 1px gray")
-    $("#find").click(function(){
-      var v = $("#search").val();
-      if (v == "") {
-        $("#search").css("border", "solid 1px red")
-      } else {
-        $("#search").css("border", "solid 1px gray")
-        window.open("http://"+v+".me.com/")
-      }
-    })
-  </script>
+  <div class="main"></div>
+  <script src="app.js"></script>
 </body>
 </html>

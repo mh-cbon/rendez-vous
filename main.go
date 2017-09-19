@@ -273,7 +273,7 @@ type rendezVousWebsiteCommand struct {
 	Listen string `short:"l" long:"listen" description:"Port to listen" default:"0.0.0.0:0"`
 	Remote string `short:"r" long:"remote" description:"The rendez-vous address"`
 	Local  string `long:"local" description:"The local port of the website" default:":9005"`
-	Dir    string `long:"dir" description:"The directory of the me.com website" default:"demows"`
+	Dir    string `long:"dir" description:"The directory of the me.com website" default:"_samples/static/assets"`
 	Pvk    string `long:"pvk" description:"The ed25519 private key - 64 len hex - auto generated if empty"`
 	Value  string `long:"value" description:"The value to sign" default:"website"`
 }
@@ -390,7 +390,7 @@ func (opts *rendezVousWsAdminCommand) Execute(args []string) error {
 	admin := admin.New(opts.Listen, opts.DbFile, opts.Dir, nil)
 
 	readyErr := ready(func() error {
-		log.Println("wsadmin server listening on", opts.Listen)
+		log.Println("wsadmin server listening on http://" + opts.Listen)
 
 		return nil
 	}, admin.ListenAndServe)

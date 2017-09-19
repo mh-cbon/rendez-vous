@@ -1,7 +1,9 @@
 package admin
 
 import (
+	"io/ioutil"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gocraft/dbr"
@@ -26,9 +28,16 @@ type Website struct {
 	dbFile    string
 	static    string
 	proxyApp  *browser.Proxy
+	tmpDir    string
 }
 
 func (w *Website) ListenAndServe() error {
+
+	tmpDir, err := ioutil.TempDir("", "rendez-vous")
+	if err != nil {
+		return err
+	}
+	w.tmpDir = tmpDir
 
 	conn, err := dbr.Open("sqlite3", w.dbFile, nil)
 	if err != nil {
@@ -41,7 +50,7 @@ func (w *Website) ListenAndServe() error {
 	if w.proxyApp != nil {
 		Node(r, w.proxyApp)
 	}
-	Apps(r, w.sess)
+	Apps(r, w.sess, w.tmpDir)
 	UI(r, w.static)
 
 	w.srv = &http.Server{
@@ -55,7 +64,9 @@ func (w *Website) ListenAndServe() error {
 
 func (w *Website) Close() error {
 
-	err := w.conn.Close()
+	err := os.RemoveAll(w.tmpDir)
+
+	err = w.conn.Close()
 	if err == nil {
 		w.conn = nil
 	}

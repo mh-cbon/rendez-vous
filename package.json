@@ -1,0 +1,31 @@
+{
+  "name": "rendez-vous",
+  "version": "1.0.0",
+  "watch": {
+    "wsadmin": {
+      "patterns": [
+        "**.go"
+      ],
+      "extensions": "go",
+      "ignore": "vendor/",
+      "quiet": false
+    },
+    "static": {
+      "patterns": [
+        "admin/app/**/**.js",
+        "admin/app/*.css"
+      ],
+      "extensions": ["js","css"],
+      "ignore": "node_modules/",
+      "quiet": false
+    }
+  },
+  "scripts": {
+    "static": "cd admin/app && npm run js2 && npm run css",
+    "wsadmin": "(killall main || echo 'ok') && go run main.go wsadmin",
+    "watch": "npm-watch",
+    "start": "npm-watch"
+  },
+  "author": "mh-cbon <mh-cbon@users.noreply.github.com>",
+  "license": "MIT"
+}

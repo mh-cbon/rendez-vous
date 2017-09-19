@@ -1,15 +1,15 @@
 
 var $ = window.jQuery || window.$;
-var vdom = require('virtual-dom')
+var vdom = require('../vdom')
 var hyperx = require('hyperx')
-var hx = hyperx(vdom.h)
+var hx = hyperx(vdom.h);
 var main = require('main-loop')
+
 var webUtils = require('../web-utils');
 
-require('util').inherits(WebMain, require('events').EventEmitter);
 module.exports = WebMain;
 
-function WebMain () {
+function WebMain (router) {
 
   var state = {
     view: "",
@@ -97,7 +97,7 @@ function WebMain () {
     state.loadingPort = true;
     loop.update(state);
     var port = loop.target.querySelector("#port").value;
-    webUtils.post("/change_port/"+port, null, function(res){
+    webUtils.postJSON("/change_port/"+port, null, function(res){
       loop.target.querySelector("#port").value = res.Port;
       if (portStatuses[res.Status]!==null) {
         state.status = portStatuses[res.Status];
@@ -122,7 +122,7 @@ function WebMain () {
   }
 
   function findClick() {
-    webUtils.post("/list/0/30/", null, function(res){
+    webUtils.postJSON("/list/0/30/", null, function(res){
       state.peers = res
       loop.update(state)
     })
@@ -131,7 +131,7 @@ function WebMain () {
   function testPort(){
     state.loadingPort = true;
     loop.update(state);
-    webUtils.post("/test_port/", null, function(res){
+    webUtils.postJSON("/test_port/", null, function(res){
       loop.target.querySelector("#port").value = res.Port;
       if (portStatuses[res.Status]!==null) {
         state.status = portStatuses[res.Status];
@@ -146,26 +146,23 @@ function WebMain () {
 
   var that = this;
   var loop = main(state, render, vdom);
-  this.enable = function(_, view){
-    if(view==undefined) {view = "connect"}
-    if (state.view!=view) {
-      state.view = view;
+  this.enable = function(params){
+    if(params.view==undefined) {params.view = "connect"}
+    if (state.view!=params.view) {
+      state.view = params.view;
       loop.update(state);
     }
   }
-  var watch = webUtils.hashChanged(
-    webUtils.matchURL(/^\/web(\/(connect)\/)?/, that.enable)
-  );
+  router.on('/web/', that.enable)
+  router.on('/web/:view', that.enable)
 
   var loop = main(state, render, vdom);
   this.install = function(to){
-    watch.begin();
     to.appendChild(loop.target);
     loop.update(state);
     testPort();
   }
   this.uninstall = function(from){
-    watch.close();
     from.removeChild(loop.target)
   }
 }

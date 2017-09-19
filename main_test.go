@@ -165,7 +165,7 @@ func runPing(remote string) error {
 }
 
 func runWebsite(remote, listen, local, pvk string) (*exec.Cmd, error) {
-	cmd := makeCmd(exeFile, "website", "-r", remote, "-l", listen, "--local", local, "--pvk", pvk, "--dir", "demows")
+	cmd := makeCmd(exeFile, "website", "-r", remote, "-l", listen, "--local", local, "--pvk", pvk, "--dir", "_samples/static/assets")
 	return cmd, timeout(cmd.Run, time.Second)
 }
 
